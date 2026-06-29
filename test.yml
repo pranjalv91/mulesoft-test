@@ -19,3 +19,7 @@ git add .gitignore
 
 git commit -m "Untrack temporary CI yamls and local script directories"
 git push origin feature-generateCI
+
+zip -r my-backup.zip . -x "*.git/*"
+
+tar -czvf my-backup.tar.gz --exclude='.git' .
