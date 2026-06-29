@@ -1,1 +1,21 @@
+git rm -r --cached \
+  .gitlab-generate-ci-external-temp.yml \
+  .gitlab-generate-ci-external-testing.yml \
+  .gitlab-generate-ci-external-preprod-temp.yml \
+  .gitlab-generate-ci-internal-preprod-temp-v2.yml \
+  .gitlab-generate-ci-internal-preprod-temp.yml \
+  .gitlab-generate-ci-internal-temp.yml \
+  .gitlab-generate-ci-internal-testing-hotfix.yml \
+  .gitlab-generate-ci-internal-testing.yml \
+  .gitlab-generate-ci-internal-uat1-temp.yml \
+  .gitlab-generate-ci-internal-v2.yml \
+  scripts/backup/ \
+  scripts/canary/ \
+  scripts/temp/ \
+  scripts/testing/
 
+
+git add .gitignore
+
+git commit -m "Untrack temporary CI yamls and local script directories"
+git push origin feature-generateCI
