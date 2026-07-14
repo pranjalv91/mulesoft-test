@@ -75,3 +75,6 @@ tar -czvf my-backup.tar.gz --exclude='.git' .
       - "$APP_DIR/${APP_NAME}.fpr"
     expire_in: 1 day
     when: always
+
+Failed to load native library:jansi-2.4.2-180fecf67afb9f89-libjansi.so. The native library file at /tmp/jansi-2.4.2-180fecf67afb9f89-libjansi.so is not executable, make sure that the directory is mounted on a partition without the noexec flag, or set the jansi.tmpdir system property to point to a proper location.  osinfo: Linux/x86_64
+java.lang.UnsatisfiedLinkError: /tmp/jansi-2.4.2-180fecf67afb9f89-libjansi.so: /tmp/jansi-2.4.2-180fecf67afb9f89-libjansi.so: failed to map segment from shared object
