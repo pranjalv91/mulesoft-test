@@ -78,3 +78,19 @@ tar -czvf my-backup.tar.gz --exclude='.git' .
 
 Failed to load native library:jansi-2.4.2-180fecf67afb9f89-libjansi.so. The native library file at /tmp/jansi-2.4.2-180fecf67afb9f89-libjansi.so is not executable, make sure that the directory is mounted on a partition without the noexec flag, or set the jansi.tmpdir system property to point to a proper location.  osinfo: Linux/x86_64
 java.lang.UnsatisfiedLinkError: /tmp/jansi-2.4.2-180fecf67afb9f89-libjansi.so: /tmp/jansi-2.4.2-180fecf67afb9f89-libjansi.so: failed to map segment from shared object
+
+before_script:
+    - |
+      cd "$APP_DIR" 
+      
+      # 1. Create a safe temp directory inside the GitLab workspace
+      mkdir -p "$CI_PROJECT_DIR/.tmp"
+      
+      keytool -import -alias jfrog-artifactory -file "$ARTIFACTORY_CERT" \
+        -keystore /home/default/custom-truststore.jks -storepass changeit -noprompt
+      
+      # 2. Append the jansi.tmpdir flag to your existing MAVEN_OPTS
+      export MAVEN_OPTS="${MAVEN_OPTS} \
+        -Djavax.net.ssl.trustStore=/home/default/custom-truststore.jks \
+        -Djavax.net.ssl.trustStorePassword=changeit \
+        -Djansi.tmpdir=$CI_PROJECT_DIR/.tmp"
