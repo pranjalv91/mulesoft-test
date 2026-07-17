@@ -1,0 +1,69 @@
+.fortify_scan_updated:
+  image: artifactory.jfrog.sbi:443/dso-base-image/ubi9/ubi9-java17-fortify-24.4:2.0
+  rules:
+    - if: '( $CI_PIPELINE_SOURCE == "parent_pipeline" && $CI_COMMIT_REF_NAME =~ /^feature-/ ) || ( $CI_PIPELINE_SOURCE == "parent_pipeline" && $CI_COMMIT_REF_NAME =~ /^hotfix-/ ) || ( $CI_PIPELINE_SOURCE == "parent_pipeline" && $CI_COMMIT_BRANCH == "dev" )'
+      changes:
+        - "$APP_DIR/**"
+        - "$APP_DIR/**/*"
+  variables:
+    MAVEN_OPTS: "-Xmx4g -Xms2g -XX:+UseG1GC -XX:MaxGCPauseMillis=200"
+    MAVEN_CLI_OPTS: "--batch-mode --errors --fail-at-end --show-version -DskipTests"
+  before_script:
+    - |
+      cd "$APP_DIR" 
+      keytool -import -alias jfrog-artifactory -file "$ARTIFACTORY_CERT" \
+        -keystore /home/default/custom-truststore.jks -storepass changeit -noprompt
+      export MAVEN_OPTS="${MAVEN_OPTS} \
+        -Djavax.net.ssl.trustStore=/home/default/custom-truststore.jks \
+        -Djavax.net.ssl.trustStorePassword=changeit"
+  script:
+    - sourceanalyzer -clean -b $APP_NAME
+    - sourceanalyzer -b $APP_NAME
+        mvn $MAVEN_CLI_OPTS clean compile -U -DskipTests=true
+        -Dfortify.sca.exclude=target
+    - sourceanalyzer -b $APP_NAME -scan -Xmx8G -filter $CI_PROJECT_DIR/fortify_filter.txt -f ${APP_NAME}.fpr
+    - BIRTReportGenerator -template "Developer Workbook"
+        -source ${APP_NAME}.fpr
+        -format pdf -output ${APP_NAME}_report.pdf
+    # Run separate queries for each severity level
+    - FPRUtility -information -search -query "[fortify priority order]:critical" -project ${APP_NAME}.fpr > sca_critical.txt
+    - FPRUtility -information -search -query "[fortify priority order]:high" -project ${APP_NAME}.fpr > sca_high.txt
+    - FPRUtility -information -search -query "[fortify priority order]:medium" -project ${APP_NAME}.fpr > sca_medium.txt
+    - FPRUtility -information -search -query "[fortify priority order]:low" -project ${APP_NAME}.fpr > sca_low.txt
+    # Extract the counts
+    - CRITICAL_ISSUES=$(grep -i "matched search query" sca_critical.txt | awk '{print $1}')
+    - HIGH_ISSUES=$(grep -i "matched search query" sca_high.txt | awk '{print $1}')
+    - MEDIUM_ISSUES=$(grep -i "matched search query" sca_medium.txt | awk '{print $1}')
+    - LOW_ISSUES=$(grep -i "matched search query" sca_low.txt | awk '{print $1}')
+    - |
+      # Ensure variables default to 0 if grep returns empty, preventing mathematical errors
+      CRITICAL_ISSUES=${CRITICAL_ISSUES:-0}
+      HIGH_ISSUES=${HIGH_ISSUES:-0}
+      MEDIUM_ISSUES=${MEDIUM_ISSUES:-0}
+      LOW_ISSUES=${LOW_ISSUES:-0}
+      
+      # Calculate total
+      TOTAL_ISSUES=$((CRITICAL_ISSUES + HIGH_ISSUES + MEDIUM_ISSUES + LOW_ISSUES))
+      
+      if [ "$TOTAL_ISSUES" -gt 0 ]; then
+        echo -e "\e[31m=========================================\e[0m"
+        echo -e "\e[31m QUALITY GATE FAILED\e[0m"
+        echo -e "\e[31m Total Vulnerabilities: $TOTAL_ISSUES\e[0m"
+        echo -e "\e[31m  - Critical: $CRITICAL_ISSUES\e[0m"
+        echo -e "\e[31m  - High:     $HIGH_ISSUES\e[0m"
+        echo -e "\e[31m  - Medium:   $MEDIUM_ISSUES\e[0m"
+        echo -e "\e[31m  - Low:      $LOW_ISSUES\e[0m"
+        echo -e "\e[31m=========================================\e[0m"
+        exit 1
+      else
+        echo -e "\e[32m=========================================\e[0m"
+        echo -e "\e[32m QUALITY GATE PASSED\e[0m"
+        echo -e "\e[32m Total Vulnerabilities: 0\e[0m"
+        echo -e "\e[32m=========================================\e[0m"
+      fi
+  artifacts:
+    paths:
+      - "$APP_DIR/${APP_NAME}_report.pdf"
+      - "$APP_DIR/${APP_NAME}.fpr"
+    expire_in: 1 day
+    when: always
