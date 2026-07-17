@@ -88,3 +88,89 @@
       
     - BIRTReportGenerator -template "Developer Workbook" -source ${APP_NAME}.fpr -format pdf -output ${APP_NAME}_report.pdf
     # ... (rest of your FPRUtility and quality gate logic remains the same)
+
+
+
+.fortify_scan_updated:
+  image: artifactory.jfrog.sbi:443/dso-base-image/ubi9/ubi9-java17-fortify-24.4:2.0
+  rules:
+    - if: '( $CI_PIPELINE_SOURCE == "parent_pipeline" && $CI_COMMIT_REF_NAME =~ /^feature-/ ) || ( $CI_PIPELINE_SOURCE == "parent_pipeline" && $CI_COMMIT_REF_NAME =~ /^hotfix-/ ) || ( $CI_PIPELINE_SOURCE == "parent_pipeline" && $CI_COMMIT_BRANCH == "dev" )'
+      changes:
+        - "$APP_DIR/**"
+        - "$APP_DIR/**/*"
+  variables:
+    MAVEN_OPTS: "-Xmx4g -Xms2g -XX:+UseG1GC -XX:MaxGCPauseMillis=200"
+    MAVEN_CLI_OPTS: "--batch-mode --errors --fail-at-end --show-version -DskipTests"
+  before_script:
+    - |
+      cd "$APP_DIR" 
+      keytool -import -alias jfrog-artifactory -file "$ARTIFACTORY_CERT" \
+        -keystore /home/default/custom-truststore.jks -storepass changeit -noprompt
+      export MAVEN_OPTS="${MAVEN_OPTS} \
+        -Djavax.net.ssl.trustStore=/home/default/custom-truststore.jks \
+        -Djavax.net.ssl.trustStorePassword=changeit"
+  script:
+    - sourceanalyzer -clean -b $APP_NAME
+    - sourceanalyzer -b $APP_NAME
+        mvn $MAVEN_CLI_OPTS clean compile -U -DskipTests=true
+        -Dfortify.sca.exclude=target
+    
+    # Conditionally execute the scan based on the existence of the filter file
+    - |
+      if [ -f "$CI_PROJECT_DIR/fortify_filter.txt" ]; then
+        echo "Suppression file found. Applying filters..."
+        sourceanalyzer -b $APP_NAME -scan -Xmx8G -filter $CI_PROJECT_DIR/fortify_filter.txt -f ${APP_NAME}.fpr
+      else
+        echo "No fortify_filter.txt found in the repository. Running unfiltered scan..."
+        sourceanalyzer -b $APP_NAME -scan -Xmx8G -f ${APP_NAME}.fpr
+      fi
+      
+    - BIRTReportGenerator -template "Developer Workbook"
+        -source ${APP_NAME}.fpr
+        -format pdf -output ${APP_NAME}_report.pdf
+        
+    # Query FPRUtility for each severity, explicitly ignoring suppressed and hidden issues
+    - FPRUtility -information -search -query "([fortify priority order]:critical) AND NOT suppressed:true AND NOT hidden:true" -project ${APP_NAME}.fpr > sca_critical.txt
+    - FPRUtility -information -search -query "([fortify priority order]:high) AND NOT suppressed:true AND NOT hidden:true" -project ${APP_NAME}.fpr > sca_high.txt
+    - FPRUtility -information -search -query "([fortify priority order]:medium) AND NOT suppressed:true AND NOT hidden:true" -project ${APP_NAME}.fpr > sca_medium.txt
+    - FPRUtility -information -search -query "([fortify priority order]:low) AND NOT suppressed:true AND NOT hidden:true" -project ${APP_NAME}.fpr > sca_low.txt
+    
+    # Extract the numerical counts
+    - CRITICAL_ISSUES=$(grep -i "matched search query" sca_critical.txt | awk '{print $1}')
+    - HIGH_ISSUES=$(grep -i "matched search query" sca_high.txt | awk '{print $1}')
+    - MEDIUM_ISSUES=$(grep -i "matched search query" sca_medium.txt | awk '{print $1}')
+    - LOW_ISSUES=$(grep -i "matched search query" sca_low.txt | awk '{print $1}')
+    
+    # Evaluate counts and process the quality gate
+    - |
+      # Provide fallback to 0 if variables are empty to prevent bash integer errors
+      CRITICAL_ISSUES=${CRITICAL_ISSUES:-0}
+      HIGH_ISSUES=${HIGH_ISSUES:-0}
+      MEDIUM_ISSUES=${MEDIUM_ISSUES:-0}
+      LOW_ISSUES=${LOW_ISSUES:-0}
+      
+      # Sum the total valid issues
+      TOTAL_ISSUES=$((CRITICAL_ISSUES + HIGH_ISSUES + MEDIUM_ISSUES + LOW_ISSUES))
+      
+      if [ "$TOTAL_ISSUES" -gt 0 ]; then
+        echo -e "\e[31m=========================================\e[0m"
+        echo -e "\e[31m QUALITY GATE FAILED\e[0m"
+        echo -e "\e[31m Total Vulnerabilities: $TOTAL_ISSUES\e[0m"
+        echo -e "\e[31m  - Critical: $CRITICAL_ISSUES\e[0m"
+        echo -e "\e[31m  - High:     $HIGH_ISSUES\e[0m"
+        echo -e "\e[31m  - Medium:   $MEDIUM_ISSUES\e[0m"
+        echo -e "\e[31m  - Low:      $LOW_ISSUES\e[0m"
+        echo -e "\e[31m=========================================\e[0m"
+        exit 1
+      else
+        echo -e "\e[32m=========================================\e[0m"
+        echo -e "\e[32m QUALITY GATE PASSED\e[0m"
+        echo -e "\e[32m Total Vulnerabilities: 0\e[0m"
+        echo -e "\e[32m=========================================\e[0m"
+      fi
+  artifacts:
+    paths:
+      - "$APP_DIR/${APP_NAME}_report.pdf"
+      - "$APP_DIR/${APP_NAME}.fpr"
+    expire_in: 1 day
+    when: always
