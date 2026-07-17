@@ -67,3 +67,24 @@
       - "$APP_DIR/${APP_NAME}.fpr"
     expire_in: 1 day
     when: always
+
+
+
+  script:
+    - sourceanalyzer -clean -b $APP_NAME
+    - sourceanalyzer -b $APP_NAME
+        mvn $MAVEN_CLI_OPTS clean compile -U -DskipTests=true
+        -Dfortify.sca.exclude=target
+    
+    # Check for the suppression file and scan accordingly
+    - |
+      if [ -f "$CI_PROJECT_DIR/fortify_filter.txt" ]; then
+        echo "Suppression file found. Applying filters..."
+        sourceanalyzer -b $APP_NAME -scan -Xmx8G -filter $CI_PROJECT_DIR/fortify_filter.txt -f ${APP_NAME}.fpr
+      else
+        echo "No fortify_filter.txt found in the repository. Running unfiltered scan..."
+        sourceanalyzer -b $APP_NAME -scan -Xmx8G -f ${APP_NAME}.fpr
+      fi
+      
+    - BIRTReportGenerator -template "Developer Workbook" -source ${APP_NAME}.fpr -format pdf -output ${APP_NAME}_report.pdf
+    # ... (rest of your FPRUtility and quality gate logic remains the same)
