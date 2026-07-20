@@ -1,0 +1,88 @@
+.upgrade_helm_testing_delimiter:
+    script: |
+        # Define the exact GitLab log colors
+        GL_GREEN='\033[32;1m'
+        GL_RESET='\033[0m'
+
+        echo -e "${GL_GREEN}Sourcing release_info.env file...${GL_RESET}"
+        source release_info.env
+        echo "Release number is $RELEASE_NUMBER"
+
+        echo " "
+        echo -e "${GL_GREEN}Generate helm values.yaml files for all nonprod envs...${GL_RESET}"
+        chmod 755 /gitrunner_data/builds/$RUNNER_CHECKOUT_DIR/0/centraliseddevsecops/eis_2.0/eis2.0_blueprint1.0/scripts/$HELM_SCRIPT_NAME
+        /gitrunner_data/builds/$RUNNER_CHECKOUT_DIR/0/centraliseddevsecops/eis_2.0/eis2.0_blueprint1.0/scripts/$HELM_SCRIPT_NAME #shell script to generate helm files
+
+        echo " "
+        echo -e "${GL_GREEN}Update the placeholders in values.yaml using sed commands...${GL_RESET}"
+        chmod 755 /gitrunner_data/builds/$RUNNER_CHECKOUT_DIR/0/centraliseddevsecops/eis_2.0/eis2.0_blueprint1.0/scripts/update_yaml.sh
+        /gitrunner_data/builds/$RUNNER_CHECKOUT_DIR/0/centraliseddevsecops/eis_2.0/eis2.0_blueprint1.0/scripts/update_yaml.sh #shell script to update the placeholders in values.yaml
+
+        echo " "
+        echo -e "${GL_GREEN}Export kubeconfig file to login to $ENV cluster...${GL_RESET}"
+        echo "export KUBECONFIG=/gitrunner_data/kubeconfig/$KUBECONFIG_FILE"
+        export KUBECONFIG=/gitrunner_data/kubeconfig/$KUBECONFIG_FILE
+
+        echo " "
+        echo -e "${GL_GREEN}Traversing into CI_PROJECT_DIR directory...${GL_RESET}"
+        echo "cd ${CI_PROJECT_DIR}"
+        cd ${CI_PROJECT_DIR}
+
+        echo " "
+        echo -e "${GL_GREEN}Pull the chart from Harbor and unpack it into a local folder...${GL_RESET}"
+        echo "helm pull oci://${HARBOR_REGISTRY}/eis2.0/mule-journey --version $SBI_MULE_HELM_VERSION --untar --insecure-skip-tls-verify"
+        helm pull oci://${HARBOR_REGISTRY}/eis2.0/mule-journey --version $SBI_MULE_HELM_VERSION --untar --insecure-skip-tls-verify
+
+        echo " "
+        echo -e "${GL_GREEN}Use 'sed' to forcefully overwrite the appVersion in the downloaded Chart.yaml...${GL_RESET}"
+        echo "sed -i "s/^appVersion:.*/appVersion: \"$RELEASE_NUMBER\"/" mule-journey/Chart.yaml"
+        sed -i "s/^appVersion:.*/appVersion: \"$RELEASE_NUMBER\"/" mule-journey/Chart.yaml
+
+        echo " "
+        echo -e "${GL_GREEN}Run the upgrade command pointing to the LOCAL folder (./mule-journey) instead of the OCI URL..${GL_RESET}"
+        echo "helm upgrade --install "$RELEASE_NAME" ./mule-journey --namespace $NAMESPACE --insecure-skip-tls-verify -f $FILE_NAME"
+        helm upgrade --install "$RELEASE_NAME" ./mule-journey --namespace $NAMESPACE --insecure-skip-tls-verify -f $FILE_NAME
+
+        echo " "
+        echo -e "${GL_GREEN}Cleaning up local mule-journey chart after applying helm configuration...${GL_RESET}"
+        echo "rm -rf ./mule-journey"
+        rm -rf ./mule-journey
+
+        echo " "
+        echo -e "${GL_GREEN}Wait for $DEPLOY_JOB_SLEEP seconds for release to settle down...${GL_RESET}"
+        echo "sleep $DEPLOY_JOB_SLEEP"
+        sleep $DEPLOY_JOB_SLEEP
+
+        echo " "
+        echo -e "${GL_GREEN}View helm revision details after applying helm chart configuration...${GL_RESET}"
+        echo "helm list --filter $RELEASE_NAME -n $NAMESPACE"
+        helm list --filter $RELEASE_NAME -n $NAMESPACE
+
+        echo " "
+        echo -e "${GL_GREEN}View status of pods after applying helm chart configuration...${GL_RESET}"
+        echo "kubectl get pods -n $NAMESPACE | grep $RELEASE_NAME"
+        kubectl get pods -n $NAMESPACE | grep $RELEASE_NAME
+        echo " "
+
+default:
+  tags:
+    - shell_eis2.0
+
+  # --- DEV ---
+dev_deploy_job:
+  stage: dev-deploy
+  variables:
+    HELM_SCRIPT_NAME: "generate-helm-internal.sh"
+    FILE_NAME: "helm/values-dev.yaml"
+    FILE_PATH: \$CI_PROJECT_DIR/\$FILE_NAME
+    ENV: "Dev"
+    SITE_NAME: "\$DEV_SITE_NAME"
+    RELEASE_NAME: "\$CI_PROJECT_NAME"
+    NAMESPACE: "\$DEV_NAMESPACE"
+    KUBECONFIG_FILE: "devkubeconfig-sa.yaml"$DEPLOY_VARS_BLOCK
+    HARBOR_REGISTRY: "\$HARBOR_NONPROD_DR_REGISTRY"
+  extends: .upgrade_helm_testing_delimiter
+  only:
+    - dev
+  when: manual
+
