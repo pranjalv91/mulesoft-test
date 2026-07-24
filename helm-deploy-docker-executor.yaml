@@ -1,0 +1,57 @@
+.upgrade_helm_testing_delimiter:
+    script: |
+        # Define the exact GitLab log colors
+        GL_GREEN='\033[32;1m'
+        GL_RESET='\033[0m'
+
+        echo -e "${GL_GREEN}Sourcing release_info.env file...${GL_RESET}"
+        source release_info.env
+        echo "Release number is $RELEASE_NUMBER"
+
+        echo " "
+        echo -e "${GL_GREEN}Cloning blueprint repository for scripts...${GL_RESET}"
+        # Adjust the URL to your actual GitLab repository URL
+        git clone https://gitlab-ci-token:${CI_JOB_TOKEN}@gitlab.yourdomain.com/centraliseddevsecops/eis_2.0/eis2.0_blueprint1.0.git blueprint_repo
+        
+        echo " "
+        echo -e "${GL_GREEN}Generate helm values.yaml files for all nonprod envs...${GL_RESET}"
+        chmod 755 blueprint_repo/scripts/$HELM_SCRIPT_NAME
+        ./blueprint_repo/scripts/$HELM_SCRIPT_NAME
+
+        echo " "
+        echo -e "${GL_GREEN}Update the placeholders in values.yaml using sed commands...${GL_RESET}"
+        chmod 755 blueprint_repo/scripts/update_yaml.sh
+        ./blueprint_repo/scripts/update_yaml.sh
+
+        echo " "
+        echo -e "${GL_GREEN}Export kubeconfig file to login to $ENV cluster...${GL_RESET}"
+        # Point to the GitLab File Variable instead of the host disk
+        export KUBECONFIG=$DEV_KUBECONFIG_CONTENT
+
+        echo " "
+        echo -e "${GL_GREEN}Pull the chart from Harbor and unpack it into a local folder...${GL_RESET}"
+        helm pull oci://${HARBOR_REGISTRY}/eis2.0/mule-journey --version $SBI_MULE_HELM_VERSION --untar --insecure-skip-tls-verify
+
+        echo " "
+        echo -e "${GL_GREEN}Use 'sed' to forcefully overwrite the appVersion in the downloaded Chart.yaml...${GL_RESET}"
+        sed -i "s/^appVersion:.*/appVersion: \"$RELEASE_NUMBER\"/" mule-journey/Chart.yaml
+
+        echo " "
+        echo -e "${GL_GREEN}Run the upgrade command...${GL_RESET}"
+        helm upgrade --install "$RELEASE_NAME" ./mule-journey --namespace $NAMESPACE --insecure-skip-tls-verify -f $FILE_NAME
+
+        echo " "
+        echo -e "${GL_GREEN}Cleaning up local mule-journey chart...${GL_RESET}"
+        rm -rf ./mule-journey blueprint_repo
+
+        echo " "
+        echo -e "${GL_GREEN}Wait for $DEPLOY_JOB_SLEEP seconds...${GL_RESET}"
+        sleep $DEPLOY_JOB_SLEEP
+
+        echo " "
+        echo -e "${GL_GREEN}View helm revision details...${GL_RESET}"
+        helm list --filter $RELEASE_NAME -n $NAMESPACE
+
+        echo " "
+        echo -e "${GL_GREEN}View status of pods...${GL_RESET}"
+        kubectl get pods -n $NAMESPACE | grep $RELEASE_NAME
