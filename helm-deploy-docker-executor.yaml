@@ -12,6 +12,9 @@
         echo -e "${GL_GREEN}Cloning blueprint repository for scripts...${GL_RESET}"
         # Adjust the URL to your actual GitLab repository URL
         git clone https://gitlab-ci-token:${CI_JOB_TOKEN}@gitlab.yourdomain.com/centraliseddevsecops/eis_2.0/eis2.0_blueprint1.0.git blueprint_repo
+
+git clone https://gitlab-ci-token:${CI_JOB_TOKEN}@gitlab.sbi/centraliseddevops/eis2.0/eis2.0_blueprint1.0.git blueprint_repo
+
         
         echo " "
         echo -e "${GL_GREEN}Generate helm values.yaml files for all nonprod envs...${GL_RESET}"
