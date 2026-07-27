@@ -85,3 +85,26 @@ deploy_job:
   script:
     - source release_info.env
     - git clone https://oauth2:glpat-[MASKED]@gitlab.sbi/... blueprint_repo
+
+
+deploy_job:
+  image: artifactory.jfrog.sbi:443/dso-base-image/ubi9/ubi9-podman-git-python-helm-jinja-mvn-3.9.11-jdk-11.0.26@sha256:...
+  variables:
+    # Set Git and Curl to use the combined bundle created in before_script
+    GIT_SSL_CAINFO: "/tmp/combined-ca-bundle.crt"
+    SSL_CERT_FILE: "/tmp/combined-ca-bundle.crt"
+
+  before_script:
+    # 1. Decode your corporate CA into /tmp
+    - echo "$INTERNAL_CA_CERT_B64" | base64 -d > /tmp/internal-ca.crt
+
+    # 2. Append your internal CA to UBI's existing system bundle
+    - cat /etc/pki/tls/certs/ca-bundle.crt /tmp/internal-ca.crt > /tmp/combined-ca-bundle.crt
+
+    # 3. Configure identity for automated commits
+    - git config --global user.email "gitlab-runner@sbi.co.in"
+    - git config --global user.name "gitlab-runner"
+
+  script:
+    - source release_info.env
+    - git clone https://oauth2:glpat-[MASKED]@gitlab.sbi/centraliseddevsecops/eis_2.0/eis2.0_blueprint1.0.git blueprint_repo
