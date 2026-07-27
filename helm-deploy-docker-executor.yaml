@@ -58,3 +58,16 @@ git clone https://gitlab-ci-token:${CI_JOB_TOKEN}@gitlab.sbi/centraliseddevops/e
         echo " "
         echo -e "${GL_GREEN}View status of pods...${GL_RESET}"
         kubectl get pods -n $NAMESPACE | grep $RELEASE_NAME
+
+
+deploy_job:
+  image: artifactory.jfrog.sbi:443/dso-base-image/ubi9/ubi9-podman-git-python-helm-jinja-mvn-3.9.11-jdk-11.0.26@sha256:...
+  before_script:
+    # 1. Decode the base64 string and save it as a physical file in the container
+    - echo "$INTERNAL_CA_CERT_B64" | base64 -d > /tmp/internal-ca.crt
+    
+    # 2. Tell Git to use this decoded file for SSL verification
+    - git config --global http.sslCAInfo /tmp/internal-ca.crt
+  script:
+    - source release_info.env
+    - git clone https://oauth2:glpat-[MASKED]@gitlab.sbi/centraliseddevsecops/eis_2.0/eis2.0_blueprint1.0.git blueprint_repo
