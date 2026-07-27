@@ -71,3 +71,17 @@ deploy_job:
   script:
     - source release_info.env
     - git clone https://oauth2:glpat-[MASKED]@gitlab.sbi/centraliseddevsecops/eis_2.0/eis2.0_blueprint1.0.git blueprint_repo
+
+
+deploy_job:
+  image: artifactory.jfrog.sbi:443/dso-base-image/ubi9/ubi9-podman...
+  before_script:
+    - echo "$INTERNAL_CA_CERT_B64" | base64 -d > /tmp/internal-ca.crt
+    - git config --global http.sslCAInfo /tmp/internal-ca.crt
+    
+    # Configure identity for automated commits
+    - git config --global user.name "GitLab CI Bot"
+    - git config --global user.email "ci-bot@gitlab.sbi"
+  script:
+    - source release_info.env
+    - git clone https://oauth2:glpat-[MASKED]@gitlab.sbi/... blueprint_repo
