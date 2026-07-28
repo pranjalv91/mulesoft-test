@@ -107,3 +107,6 @@ deploy_job:
   script:
     - source release_info.env
     - git clone https://oauth2:glpat-[MASKED]@gitlab.sbi/centraliseddevsecops/eis_2.0/eis2.0_blueprint1.0.git blueprint_repo
+
+
+kubectl get all -o custom-columns=NAME:.metadata.name,READY:.status.containerStatuses[*].ready,STATUS:.status.phase,AGE:.metadata.creationTimestamp
