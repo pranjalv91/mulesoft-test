@@ -110,3 +110,7 @@ deploy_job:
 
 
 kubectl get all -o custom-columns=NAME:.metadata.name,READY:.status.containerStatuses[*].ready,STATUS:.status.phase,AGE:.metadata.creationTimestamp
+
+  before_script:
+    # Test raw TCP connectivity to Harbor on port 443
+    - curl -vk https://h06vksharbor.corp.ad.sbi/v2/ --connect-timeout 5 || true
