@@ -114,3 +114,9 @@ kubectl get all -o custom-columns=NAME:.metadata.name,READY:.status.containerSta
   before_script:
     # Test raw TCP connectivity to Harbor on port 443
     - curl -vk https://h06vksharbor.corp.ad.sbi/v2/ --connect-timeout 5 || true
+
+  before_script:
+    # ... (your existing SSL certificate logic) ...
+
+    # Explicitly log in to Harbor for the ephemeral Docker container
+    - helm registry login "h06vksharbor.corp.ad.sbi" -u "$HARBOR_USERNAME" -p "$HARBOR_PASSWORD"
