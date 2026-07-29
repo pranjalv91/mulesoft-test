@@ -1,0 +1,79 @@
+# This is modified script based on ready status only
+.automated_podhealth_check_docker_executor:
+    script:
+        - |
+          # Define the exact GitLab log colors
+          GL_GREEN='\033[32;1m'
+          GL_RED='\033[31;1m'
+          GL_RESET='\033[0m'
+
+          #!/bin/bash
+        
+          echo "Defining variables needed for the job..."
+          NAMESPACE="$NAMESPACE"
+          RELEASE_NAME="$RELEASE_NAME" 
+          APP_LABEL="${RELEASE_NAME}-${SITE_NAME}"
+
+          echo "NAMESPACE=$NAMESPACE"
+          echo "RELEASE_NAME=$RELEASE_NAME"
+          echo "APP_LABEL=$APP_LABEL"
+          echo "APP_CHECK_SLEEP=$APP_CHECK_SLEEP seconds"
+
+          echo " "
+          echo -e "${GL_GREEN}Export kubeconfig file to login to $ENV cluster...${GL_RESET}"
+          echo "export KUBECONFIG=$KUBECONFIG_CONTENT"
+          export KUBECONFIG=$KUBECONFIG_CONTENT
+        
+          REPLICAS=$APP_REPLICAS
+          echo "Number of replicas for this run is $REPLICAS"
+          echo " "
+        
+          # We will loop from 0 to (REPLICAS - 1)
+          # This matches the pod-index from 0, 1, ... etc.
+          for i in $(seq $((REPLICAS - 1)) -1 0); do
+
+            echo "---"
+            echo "Checking Pod Index: $i"
+            echo "Waiting ${APP_CHECK_SLEEP} seconds for release to settle..."
+            sleep ${APP_CHECK_SLEEP}
+
+            # Define the label selector for this specific pod
+            POD_SELECTOR="app=$APP_LABEL,apps.kubernetes.io/pod-index=$i"
+
+            # Get the *exact* pod name
+            POD_NAME=$(kubectl get pods -n $NAMESPACE \
+                -l "$POD_SELECTOR" \
+                -o jsonpath='{.items[0].metadata.name}')
+
+            READY_STATUS=$(kubectl get pods -n $NAMESPACE \
+            -l "$POD_SELECTOR" \
+            -o jsonpath='{.items[*].status.containerStatuses[*].ready}')
+
+            echo "Current pod ready status is $READY_STATUS"
+
+            # Print message if pod ready status is true
+            if [[ "$READY_STATUS" == "true" ]]; then
+                echo " "
+                echo -e "READY STATUS FOR POD $POD_NAME IS ${GL_GREEN}${READY_STATUS^^}${GL_RESET}"
+                echo -e "${GL_GREEN}POD INDEX $i IS STABLE${GL_RESET}"
+                echo -e "${GL_GREEN}NO ROLLBACK IS REQUIRED${GL_RESET}"
+            fi
+
+            # Print message to initiate manual rollback if pod ready status is false
+            if [[ "$READY_STATUS" == "false" || "$READY_STATUS" == "" ]]; then
+                echo " "
+                echo -e "READY STATUS FOR POD $POD_NAME IS ${GL_RED}${READY_STATUS^^}${GL_RESET}"
+                echo -e "${GL_RED}POD INDEX $i IS UNSTABLE${GL_RESET}"
+                echo -e "${GL_RED}PLEASE ASK DEVSECOPS TEAM TO ROLLBACK TO PREVIOUS STABLE VERSION${GL_RESET}"
+                echo " "
+                echo "Failing pipeline to alert team."
+                echo "---"
+                echo " "
+                exit 1 # CRITICAL: Exit after the first failure
+            fi
+
+          done
+          echo "---"
+          echo " "
+          echo "Displaying pod status after release checks are completed..."
+          kubectl get pods -n $NAMESPACE | grep $RELEASE_NAME | awk '{print $1, $2, $3, $5}' | column -t -o "    "
