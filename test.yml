@@ -120,3 +120,36 @@ kubectl get all -o custom-columns=NAME:.metadata.name,READY:.status.containerSta
 
     # Explicitly log in to Harbor for the ephemeral Docker container
     - helm registry login "h06vksharbor.corp.ad.sbi" -u "$HARBOR_USERNAME" -p "$HARBOR_PASSWORD"
+
+
+#This job is used by all internal and external journeys to lint pom for test coverage variable configuration
+.lint_pom_test_coverage:
+    #This rule implies that the job will only run when the pipeline is triggered due to code merge or if the code is commited to dev branch
+    rules:
+        - if: '$CI_PIPELINE_SOURCE == "parent_pipeline"'
+    script: |
+        # Define the exact GitLab log colors
+        GL_GREEN='\033[32;1m'
+        GL_RESET='\033[0m'
+
+        echo ""
+        echo -e "${GL_GREEN}$ echo \"Traversing into app directory...\"${GL_RESET}"
+        echo "Traversing into app directory..."
+        cd "$APP_DIR"
+        echo "Linting pom.xml for test coverage variable line..."
+        echo " "
+        if grep -Fq '<requiredApplicationCoverage>${munit.coverage.min}</requiredApplicationCoverage>' pom.xml; then
+          echo "SUCCESS: Test coverage variable found in pom.xml for $APP_NAME"
+          echo "Proceeding to get_version_job for $APP_NAME"
+          echo " "
+        else
+          echo "FAILURE: Test coverage variable is missing from pom.xml for $APP_NAME"
+          echo " "
+          echo "Hardcoded value of 80 from below line needs to be replaced in pom.xml for $APP_NAME:"
+          echo "<requiredApplicationCoverage>80</requiredApplicationCoverage>"
+          echo " "
+          echo "Replace the hardcoded value with "\${munit.coverage.min}" for above line in pom.xml for $APP_NAME"
+          echo "Exiting the pipeline"
+          echo " "
+          exit 1
+        fi
