@@ -40,3 +40,11 @@ source ~/.vimrc
 fatal: unable to access 'https://gitlab.sbi/eis_2.0/platform/sbi-mule-containerize.git/': SSL certificate problem: self-signed certificate in certificate chain
 
 git -c http.sslVerify=false push -u origin feature-UpdateLatestImage
+
+[root@eis2nprodjump2 sbi-mule-containerize]# git push -u origin feature-UpdateLatestImage
+fatal: unable to access 'https://gitlab.sbi/eis_2.0/platform/sbi-mule-containerize.git/': SSL certificate problem: self-signed certificate in certificate chain
+[root@eis2nprodjump2 sbi-mule-containerize]# git -c http.sslVerify=false push -u origin feature-UpdateLatestImage
+Username for 'https://gitlab.sbi': V1022383
+Password for 'https://V1022383@gitlab.sbi':
+branch 'feature-UpdateLatestImage' set up to track 'origin/feature-UpdateLatestImage'.
+Everything up-to-date
