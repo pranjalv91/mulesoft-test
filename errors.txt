@@ -35,3 +35,6 @@ set showmode
 
 source ~/.vimrc
 -bash: syntax: command not found
+
+[root@eis2nprodjump2 sbi-mule-containerize]# git push -u origin feature-UpdateLatestImage
+fatal: unable to access 'https://gitlab.sbi/eis_2.0/platform/sbi-mule-containerize.git/': SSL certificate problem: self-signed certificate in certificate chain
