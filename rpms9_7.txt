@@ -1,3 +1,12 @@
+Missing packages in 9.8 baseOS
+brotli-1.0.9-7.el9_5.x86_64.rpm
+libbrotli-1.0.9-7.el9_5.x86_64.rpm
+nodejs-18.20.8-1.module+el9.6.0+23094+56b98c98.x86_64.rpm
+nodejs-docs-18.20.8-1.module+el9.6.0+23094+56b98c98.noarch.rpm
+nodejs-full-i18n-18.20.8-1.module+el9.6.0+23094+56b98c98.x86_64.rpm
+tcpdump-4.99.0-9.el9.x86_64.rpm
+
+Packages in 9.7 baseOS
 brotli-1.0.9-7.el9_5.x86_64.rpm
 chkconfig-1.24-2.el9.x86_64.rpm
 gettext-0.21-8.el9.x86_64.rpm
