@@ -25,8 +25,13 @@ Error:
 (try to add '--skip-broken' to skip uninstallable packages or '--nobest' to use not only best candidate packages)
 Error: building at STEP "RUN dnf install -y /tmp/rpms/*.rpm --disablerepo="*" --nogpgcheck && dnf clean all && rm -rf /var/cache/dnf /tmp/rpms;": while running runtime: exit status 1
 
+vim ~/.vimrc
+
 set number
 set showmode
 syntax on
 set clipboard=unnamedplus
 set showmode
+
+source ~/.vimrc
+-bash: syntax: command not found
