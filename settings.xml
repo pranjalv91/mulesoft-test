@@ -1,0 +1,171 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<settings xmlns="http://maven.apache.org/SETTINGS/1.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/SETTINGS/1.0.0                               http://maven.apache.org/xsd/settings-1.0.0.xsd">
+	<localRepository>E:\.m2\repository</localRepository>
+	<servers>
+		<server>
+			<id>mule-repository</id>
+			<username>sbi.nexus</username>
+			<password>XzTbd4uePHyM2Am</password>
+		</server>
+		<server>
+			<id>anypoint-exchange</id>
+			<username>~~~Client~~~</username>
+            <password>7d1a1e2d84f04a098fc26376e06a7da0~?~612de6F41f1a423F96b072064BcC8bF2</password>
+		</server>
+		<!-- <server>
+			<id>anypoint-exchange</id>
+			<username>eis2_admin</username>
+			<password>GreenZone@2025</password>
+		</server> -->
+		<server>
+			<id>sbi-pce-repository</id>
+			<username>eis2_admin</username>
+			<password>GreenZone@2025</password>
+		</server>
+		<server>
+			<id>sbi-pce-repository</id>
+			<username>eis2_admin</username>
+			<password>GreenZone@2025</password>
+		</server>
+	</servers>
+	<mirrors>
+		<mirror>
+			<id>mulesoft-releases</id>
+			<mirrorOf>mulesoft-plugin-releases</mirrorOf>
+			<url>https://repository.mulesoft.org/releases</url>
+		</mirror>
+		<mirror>
+			<id>mulesoft-snapshots</id>
+			<mirrorOf>mulesoft-plugin-snapshots</mirrorOf>
+			<url>https://repository.mulesoft.org/snapshots</url>
+		</mirror>
+		<mirror>
+			<id>maven-central-mirror</id>
+			<mirrorOf>central</mirrorOf>
+			<url>https://repo.maven.apache.org/maven2</url>
+		</mirror>
+	</mirrors>
+	<proxies>
+		<proxy>
+			<active>true</active>
+			<protocol>http</protocol>
+			<host>10.191.191.8</host>
+			<port>9090</port>
+			<username>5698766</username>
+			<password>Ramdoot@0725</password>
+			<nonProxyHosts>anypoint-nonprod-eis2.sbi.co.in</nonProxyHosts>
+		</proxy>
+	</proxies>
+	<profiles>
+		<profile>
+			<id>mule-profile</id>
+			<activation>
+				<activeByDefault>true</activeByDefault>
+			</activation>
+			<repositories>
+				<repository>
+					<id>anypoint-exchange</id>
+					<name>Anypoint Exchange</name>
+					<url>https://maven.anypoint.mulesoft.com/api/v1/organizations/5a7a14fe-499b-4105-bfaa-81f798b6e755/maven</url>
+				</repository>
+				<repository>
+					<id>anypoint-exchange-v3</id>
+					<name>MuleSoft Exchange</name>
+					<url>https://maven.anypoint.mulesoft.com/api/v3/maven</url>
+				</repository>
+				<repository>
+					<id>mule-repository</id>
+					<name>Nexus EE Repository</name>
+					<url>https://repository.mulesoft.org/nexus-ee/content/repositories/releases-ee</url>
+				</repository>
+				<repository>
+					<id>mulesoft-public</id>
+					<name>Mulesoft Public Repository</name>
+					<url>https://repository.mulesoft.org/nexus/content/repositories/public</url>
+				</repository>
+				<repository>
+					<id>mulesoft-releases</id>
+					<name>MuleSoft Releases Repository</name>
+					<url>https://repository.mulesoft.org/releases/</url>
+				</repository>
+				<repository>
+					<id>sbi-pce-repository</id>
+					<name>Anypoint PCE Repository</name>
+					<url>https://anypoint-nonprod-eis2.sbi.co.in/exchange/maven</url>
+				</repository>
+			</repositories>
+			<pluginRepositories>
+				<pluginRepository>
+					<id>anypoint-exchange</id>
+					<name>Anypoint Exchange</name>
+					<url>https://maven.anypoint.mulesoft.com/api/v1/organizations/5a7a14fe-499b-4105-bfaa-81f798b6e755/maven</url>
+				</pluginRepository>
+				<pluginRepository>
+					<id>anypoint-exchange-v3</id>
+					<name>MuleSoft Exchange</name>
+					<url>https://maven.anypoint.mulesoft.com/api/v3/maven</url>
+				</pluginRepository>
+				<pluginRepository>
+					<id>mulesoft-releases</id>
+					<name>MuleSoft Releases Repository</name>
+					<url>https://repository.mulesoft.org/releases</url>
+				</pluginRepository>
+			</pluginRepositories>
+		</profile>
+			<profile>
+			<id>pom</id>
+			<activation>
+				<activeByDefault>true</activeByDefault>
+			</activation>
+			<repositories>
+				<repository>
+					<id>anypoint-exchange</id>
+					<name>Anypoint Exchange</name>
+					<url>https://maven.anypoint.mulesoft.com/api/v1/organizations/5a7a14fe-499b-4105-bfaa-81f798b6e755/maven</url>
+				</repository>
+				<repository>
+					<id>anypoint-exchange-v3</id>
+					<name>MuleSoft Exchange</name>
+					<url>https://maven.anypoint.mulesoft.com/api/v3/maven</url>
+				</repository>
+				<repository>
+					<id>mule-repository</id>
+					<name>Nexus EE Repository</name>
+					<url>https://repository.mulesoft.org/nexus-ee/content/repositories/releases-ee</url>
+				</repository>
+				<repository>
+					<id>mulesoft-public</id>
+					<name>Mulesoft Public Repository</name>
+					<url>https://repository.mulesoft.org/nexus/content/repositories/public</url>
+				</repository>
+				<repository>
+					<id>mulesoft-releases</id>
+					<name>MuleSoft Releases Repository</name>
+					<url>https://repository.mulesoft.org/releases/</url>
+				</repository>
+				<repository>
+					<id>sbi-pce-repository</id>
+					<name>Anypoint PCE Repository</name>
+					<url>https://anypoint-nonprod-eis2.sbi.co.in/exchange/maven</url>
+				</repository>
+			</repositories>
+			<pluginRepositories>
+				<pluginRepository>
+					<id>anypoint-exchange</id>
+					<name>Anypoint Exchange</name>
+					<url>https://maven.anypoint.mulesoft.com/api/v1/organizations/5a7a14fe-499b-4105-bfaa-81f798b6e755/maven</url>
+				</pluginRepository>
+				<pluginRepository>
+					<id>anypoint-exchange-v3</id>
+					<name>MuleSoft Exchange</name>
+					<url>https://maven.anypoint.mulesoft.com/api/v3/maven</url>
+				</pluginRepository>
+				<pluginRepository>
+					<id>mulesoft-releases</id>
+					<name>MuleSoft Releases Repository</name>
+					<url>https://repository.mulesoft.org/releases</url>
+				</pluginRepository>
+			</pluginRepositories>
+		</profile>
+	</profiles>
+</settings>
