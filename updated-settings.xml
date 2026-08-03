@@ -72,7 +72,7 @@
                         <port>9090</port>
                         <username>5698766</username>
                         <password>Ramdoot@0725</password>
-                        <!-- Added artifactory.jfrog.sbi so internal JFrog traffic bypasses external proxy -->
+                        <!-- Ensure internal JFrog traffic bypasses external proxy -->
                         <nonProxyHosts>anypoint-nonprod-eis2.sbi.co.in|artifactory.jfrog.sbi|*.jfrog.sbi</nonProxyHosts>
                 </proxy>
         </proxies>
@@ -84,6 +84,7 @@
                                 <activeByDefault>true</activeByDefault>
                         </activation>
                         <repositories>
+                                <!-- Existing Exchange Repositories -->
                                 <repository>
                                         <id>anypoint-exchange</id>
                                         <name>Anypoint Exchange</name>
@@ -123,6 +124,7 @@
                                 </repository>
                         </repositories>
                         <pluginRepositories>
+                                <!-- Existing Exchange Plugin Repositories -->
                                 <pluginRepository>
                                         <id>anypoint-exchange</id>
                                         <name>Anypoint Exchange</name>
@@ -133,10 +135,27 @@
                                         <name>MuleSoft Exchange</name>
                                         <url>https://maven.anypoint.mulesoft.com/api/v3/maven</url>
                                 </pluginRepository>
+
+                                <!-- Integrated JFrog Plugin Repositories -->
+                                <pluginRepository>
+                                        <id>mulesoft-master</id>
+                                        <name>MuleSoft Master Plugin Repository via JFrog</name>
+                                        <url>https://artifactory.jfrog.sbi:443/artifactory/mulesoft-master/</url>
+                                </pluginRepository>
                                 <pluginRepository>
                                         <id>mulesoft-public</id>
-                                        <name>MuleSoft Public via JFrog</name>
+                                        <name>MuleSoft Public Plugin Repository via JFrog</name>
                                         <url>https://artifactory.jfrog.sbi:443/artifactory/mulesoft-public/</url>
+                                </pluginRepository>
+                                <pluginRepository>
+                                        <id>mulesoft-nexus-ee</id>
+                                        <name>MuleSoft Nexus EE Plugin Repository via JFrog</name>
+                                        <url>https://artifactory.jfrog.sbi:443/artifactory/mulesoft-nexus-ee/</url>
+                                </pluginRepository>
+                                <pluginRepository>
+                                        <id>mulesoft-master-ee</id>
+                                        <name>MuleSoft Master EE Plugin Repository via JFrog</name>
+                                        <url>https://artifactory.jfrog.sbi:443/artifactory/mulesoft-master-ee/</url>
                                 </pluginRepository>
                         </pluginRepositories>
                 </profile>
@@ -147,6 +166,7 @@
                                 <activeByDefault>true</activeByDefault>
                         </activation>
                         <repositories>
+                                <!-- Existing Exchange Repositories -->
                                 <repository>
                                         <id>anypoint-exchange</id>
                                         <name>Anypoint Exchange</name>
@@ -186,6 +206,7 @@
                                 </repository>
                         </repositories>
                         <pluginRepositories>
+                                <!-- Existing Exchange Plugin Repositories -->
                                 <pluginRepository>
                                         <id>anypoint-exchange</id>
                                         <name>Anypoint Exchange</name>
@@ -196,10 +217,27 @@
                                         <name>MuleSoft Exchange</name>
                                         <url>https://maven.anypoint.mulesoft.com/api/v3/maven</url>
                                 </pluginRepository>
+
+                                <!-- Integrated JFrog Plugin Repositories -->
+                                <pluginRepository>
+                                        <id>mulesoft-master</id>
+                                        <name>MuleSoft Master Plugin Repository via JFrog</name>
+                                        <url>https://artifactory.jfrog.sbi:443/artifactory/mulesoft-master/</url>
+                                </pluginRepository>
                                 <pluginRepository>
                                         <id>mulesoft-public</id>
-                                        <name>MuleSoft Public via JFrog</name>
+                                        <name>MuleSoft Public Plugin Repository via JFrog</name>
                                         <url>https://artifactory.jfrog.sbi:443/artifactory/mulesoft-public/</url>
+                                </pluginRepository>
+                                <pluginRepository>
+                                        <id>mulesoft-nexus-ee</id>
+                                        <name>MuleSoft Nexus EE Plugin Repository via JFrog</name>
+                                        <url>https://artifactory.jfrog.sbi:443/artifactory/mulesoft-nexus-ee/</url>
+                                </pluginRepository>
+                                <pluginRepository>
+                                        <id>mulesoft-master-ee</id>
+                                        <name>MuleSoft Master EE Plugin Repository via JFrog</name>
+                                        <url>https://artifactory.jfrog.sbi:443/artifactory/mulesoft-master-ee/</url>
                                 </pluginRepository>
                         </pluginRepositories>
                 </profile>
