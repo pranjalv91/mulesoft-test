@@ -1,0 +1,12 @@
+Here is a crisp and professional follow-up email you can use to reply to the original thread.
+**Subject:** RE: List of public repositories
+
+
+Dear Sir/Madam,
+I am following up on the request sent last month (as seen in the referenced file dc3b8596-2bc6-452e-8f4a-680018c6c792) regarding the whitelisting of the public repositories in JFrog. Could you please provide a status update on this task?
+Currently, this pending setup is creating a bottleneck for our workflow. Because these repositories are not whitelisted, developers cannot fetch new dependencies directly via their pom.xml files. Instead, they must route requests to DevOps to manually download and upload both the primary and transitive dependencies into JFrog.
+This manual workaround is significantly increasing our development time and acting as a critical blocker for resolving dependency issues flagged during Xray scans.
+Any prompt assistance in getting these URLs whitelisted would be highly appreciated so we can unblock the development team.
+
+Regards,
+Pranjal
