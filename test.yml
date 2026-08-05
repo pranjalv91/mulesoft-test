@@ -189,3 +189,5 @@ kubectl get all -o custom-columns=NAME:.metadata.name,READY:.status.containerSta
           echo " "
           exit 1
         fi
+
+mvn dependency:get -Dartifact=org.mule.runtime:mule-core:4.4.0 -s "E:\path\to\your\updated\settings.xml"
