@@ -48,3 +48,26 @@ Username for 'https://gitlab.sbi': V1022383
 Password for 'https://V1022383@gitlab.sbi':
 branch 'feature-UpdateLatestImage' set up to track 'origin/feature-UpdateLatestImage'.
 Everything up-to-date
+
+[INFO]
+[INFO] --------< 5a7a14fe-499b-4105-bfaa-81f798b6e755:app-eckms-sapi >---------
+[INFO] Building app-eckms-sapi 1.0.12
+[INFO]   from pom.xml
+[INFO] --------------------------[ mule-application ]--------------------------
+[INFO]
+[INFO] --- dependency:3.7.0:get (default-cli) @ app-eckms-sapi ---
+[INFO] Resolving org.mule.runtime:mule-core:jar:4.4.0 with transitive dependencies
+Downloading from mulesoft-master: https://artifactory.jfrog.sbi:443/artifactory/mulesoft-master/org/mule/runtime/mule-core/4.4.0/mule-core-4.4.0.pom
+Downloading from mulesoft-public: https://artifactory.jfrog.sbi:443/artifactory/mulesoft-public/org/mule/runtime/mule-core/4.4.0/mule-core-4.4.0.pom
+Downloading from mulesoft-nexus-ee: https://artifactory.jfrog.sbi:443/artifactory/mulesoft-nexus-ee/org/mule/runtime/mule-core/4.4.0/mule-core-4.4.0.pom
+Downloading from mulesoft-master-ee: https://artifactory.jfrog.sbi:443/artifactory/mulesoft-master-ee/org/mule/runtime/mule-core/4.4.0/mule-core-4.4.0.pom
+Downloading from anypoint-exchange-v3: https://maven.anypoint.mulesoft.com/api/v3/maven/org/mule/runtime/mule-core/4.4.0/mule-core-4.4.0.pom
+Downloading from mulesoft-releases: https://repository.mulesoft.org/releases/org/mule/runtime/mule-core/4.4.0/mule-core-4.4.0.pom
+Downloading from central: https://repo.maven.apache.org/maven2/org/mule/runtime/mule-core/4.4.0/mule-core-4.4.0.pom
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD FAILURE
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time:  11.375 s
+[INFO] Finished at: 2026-08-05T13:00:42+05:30
+[INFO] ------------------------------------------------------------------------
+[ERROR] Failed to execute goal org.apache.maven.plugins:maven-dependency-plugin:3.7.0:get (default-cli) on project app-eckms-sapi: Couldn't download artifact: org.eclipse.aether.resolution.DependencyResolutionException: Failed to read artifact descriptor for org.mule.runtime:mule-core:jar:4.4.0: The following artifacts could not be resolved: org.mule.runtime:mule-core:pom:4.4.0 (absent): Could not transfer artifact org.mule.runtime:mule-core:pom:4.4.0 from/to mulesoft-master (https://artifactory.jfrog.sbi:443/artifactory/mulesoft-master/): PKIX path building failed: sun.security.provider.certpath.SunCertPathBuilderException: unable to find valid certification path to requested target -> [Help 1]
