@@ -71,3 +71,36 @@ Downloading from central: https://repo.maven.apache.org/maven2/org/mule/runtime/
 [INFO] Finished at: 2026-08-05T13:00:42+05:30
 [INFO] ------------------------------------------------------------------------
 [ERROR] Failed to execute goal org.apache.maven.plugins:maven-dependency-plugin:3.7.0:get (default-cli) on project app-eckms-sapi: Couldn't download artifact: org.eclipse.aether.resolution.DependencyResolutionException: Failed to read artifact descriptor for org.mule.runtime:mule-core:jar:4.4.0: The following artifacts could not be resolved: org.mule.runtime:mule-core:pom:4.4.0 (absent): Could not transfer artifact org.mule.runtime:mule-core:pom:4.4.0 from/to mulesoft-master (https://artifactory.jfrog.sbi:443/artifactory/mulesoft-master/): PKIX path building failed: sun.security.provider.certpath.SunCertPathBuilderException: unable to find valid certification path to requested target -> [Help 1]
+
+
+[INFO]
+[INFO] --------< 5a7a14fe-499b-4105-bfaa-81f798b6e755:app-eckms-sapi >---------
+[INFO] Building app-eckms-sapi 1.0.12
+[INFO]   from pom.xml
+[INFO] --------------------------[ mule-application ]--------------------------
+Downloading from mulesoft-master: https://artifactory.jfrog.sbi:443/artifactory/mulesoft-master/org/mule/runtime/mule-core/4.4.0/mule-core-4.4.0.pom
+Downloading from mulesoft-public: https://artifactory.jfrog.sbi:443/artifactory/mulesoft-public/org/mule/runtime/mule-core/4.4.0/mule-core-4.4.0.pom
+Downloading from mulesoft-nexus-ee: https://artifactory.jfrog.sbi:443/artifactory/mulesoft-nexus-ee/org/mule/runtime/mule-core/4.4.0/mule-core-4.4.0.pom
+Downloading from mulesoft-master-ee: https://artifactory.jfrog.sbi:443/artifactory/mulesoft-master-ee/org/mule/runtime/mule-core/4.4.0/mule-core-4.4.0.pom
+Downloading from central: https://repo.maven.apache.org/maven2/org/mule/runtime/mule-core/4.4.0/mule-core-4.4.0.pom
+[WARNING] The POM for org.mule.runtime:mule-core:jar:4.4.0 is missing, no dependency information available
+Downloading from mulesoft-master: https://artifactory.jfrog.sbi:443/artifactory/mulesoft-master/org/mule/runtime/mule-core/4.4.0/mule-core-4.4.0.jar
+Downloading from mulesoft-public: https://artifactory.jfrog.sbi:443/artifactory/mulesoft-public/org/mule/runtime/mule-core/4.4.0/mule-core-4.4.0.jar
+Downloading from mulesoft-nexus-ee: https://artifactory.jfrog.sbi:443/artifactory/mulesoft-nexus-ee/org/mule/runtime/mule-core/4.4.0/mule-core-4.4.0.jar
+Downloading from mulesoft-master-ee: https://artifactory.jfrog.sbi:443/artifactory/mulesoft-master-ee/org/mule/runtime/mule-core/4.4.0/mule-core-4.4.0.jar
+Downloading from central: https://repo.maven.apache.org/maven2/org/mule/runtime/mule-core/4.4.0/mule-core-4.4.0.jar
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD FAILURE
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time:  9.303 s
+[INFO] Finished at: 2026-08-05T15:08:34+05:30
+[INFO] ------------------------------------------------------------------------
+[ERROR] Failed to execute goal on project app-eckms-sapi: Could not resolve dependencies for project 5a7a14fe-499b-4105-bfaa-81f798b6e755:app-eckms-sapi:mule-application:1.0.12
+[ERROR] dependency: org.mule.runtime:mule-core:jar:4.4.0 (compile)
+[ERROR]         Could not find artifact org.mule.runtime:mule-core:jar:4.4.0 in mulesoft-master (https://artifactory.jfrog.sbi:443/artifactory/mulesoft-master/)
+[ERROR]         Could not find artifact org.mule.runtime:mule-core:jar:4.4.0 in mulesoft-public (https://artifactory.jfrog.sbi:443/artifactory/mulesoft-public/)
+[ERROR]         Could not find artifact org.mule.runtime:mule-core:jar:4.4.0 in mulesoft-nexus-ee (https://artifactory.jfrog.sbi:443/artifactory/mulesoft-nexus-ee/)
+[ERROR]         Could not find artifact org.mule.runtime:mule-core:jar:4.4.0 in mulesoft-master-ee (https://artifactory.jfrog.sbi:443/artifactory/mulesoft-master-ee/)
+[ERROR]         Could not find artifact org.mule.runtime:mule-core:jar:4.4.0 in central (https://repo.maven.apache.org/maven2)
+[ERROR]
+[ERROR] -> [Help 1]
