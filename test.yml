@@ -197,3 +197,11 @@ mvn dependency:get -Dartifact=org.mule.runtime:mule-core:4.4.0 -s "E:\path\to\yo
     <artifactId>mule-core</artifactId>
     <version>4.4.0</version>
 </dependency>
+
+For Public Dependencies (mulesoft-public / mulesoft-master):
+[https://repository.mulesoft.org/nexus/content/repositories/public/](https://repository.mulesoft.org/nexus/content/repositories/public/)
+
+(Alternatively, for strictly releases): [https://repository.mulesoft.org/nexus/content/repositories/releases/](https://repository.mulesoft.org/nexus/content/repositories/releases/)
+
+For Enterprise Dependencies (mulesoft-nexus-ee / mulesoft-master-ee):
+[https://repository.mulesoft.org/nexus-ee/content/repositories/releases-ee/](https://repository.mulesoft.org/nexus-ee/content/repositories/releases-ee/)
