@@ -205,3 +205,8 @@ For Public Dependencies (mulesoft-public / mulesoft-master):
 
 For Enterprise Dependencies (mulesoft-nexus-ee / mulesoft-master-ee):
 [https://repository.mulesoft.org/nexus-ee/content/repositories/releases-ee/](https://repository.mulesoft.org/nexus-ee/content/repositories/releases-ee/)
+
+          echo " "
+          echo -e "${GL_GREEN}Export kubeconfig file to login to $ENV cluster...${GL_RESET}"
+          echo "export KUBECONFIG=$KUBECONFIG_CONTENT"
+          export KUBECONFIG=$KUBECONFIG_CONTENT
