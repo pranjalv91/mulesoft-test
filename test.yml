@@ -206,7 +206,31 @@ For Public Dependencies (mulesoft-public / mulesoft-master):
 For Enterprise Dependencies (mulesoft-nexus-ee / mulesoft-master-ee):
 [https://repository.mulesoft.org/nexus-ee/content/repositories/releases-ee/](https://repository.mulesoft.org/nexus-ee/content/repositories/releases-ee/)
 
-          echo " "
-          echo -e "${GL_GREEN}Export kubeconfig file to login to $ENV cluster...${GL_RESET}"
-          echo "export KUBECONFIG=$KUBECONFIG_CONTENT"
-          export KUBECONFIG=$KUBECONFIG_CONTENT
+
+
+echo " "
+echo -e "${GL_GREEN}Export kubeconfig file to login to $ENV cluster...${GL_RESET}"
+echo "export KUBECONFIG=/gitrunner_data/kubeconfig/$KUBECONFIG_FILE"
+export KUBECONFIG=/gitrunner_data/kubeconfig/$KUBECONFIG_FILE
+
+dev_deploy_job:
+  stage: dev-deploy
+  variables:
+    HELM_SCRIPT_NAME: "generate-helm-internal.sh"
+    FILE_NAME: "helm/values-dev.yaml"
+    FILE_PATH: \$CI_PROJECT_DIR/\$FILE_NAME
+    ENV: "Dev"
+    SITE_NAME: "\$DEV_SITE_NAME"
+    RELEASE_NAME: "\$CI_PROJECT_NAME"
+    NAMESPACE: "\$DEV_NAMESPACE"
+    KUBECONFIG_FILE: "devkubeconfig-sa.yaml"$DEPLOY_VARS_BLOCK
+    HARBOR_REGISTRY: "\$HARBOR_NONPROD_DR_REGISTRY"
+  extends: .upgrade_helm_testing_delimiter
+  only:
+    - dev
+  when: manual
+
+echo " "
+echo -e "${GL_GREEN}Export kubeconfig file to login to $ENV cluster...${GL_RESET}"
+echo "export KUBECONFIG=$KUBECONFIG_CONTENT"
+export KUBECONFIG=$KUBECONFIG_CONTENT
