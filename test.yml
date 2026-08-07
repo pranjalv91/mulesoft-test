@@ -259,3 +259,7 @@ echo "$HARBOR_REGISTRY_PASSWORD" | helm registry login --username 'robot$eis-cic
 Logging into harbor registry h06vksharbor.corp.ad.sbi...
 Robot user is robot$eis-cicd
 Error: Get "https://h06vksharbor.corp.ad.sbi/v2/": tls: failed to verify certificate: x509: certificate signed by unknown authority
+
+Logging into harbor registry h06vksharbor.corp.ad.sbi...
+Robot user is robot$eis-cicd
+Error: unknown flag: --insecure-skip-tls-verify
