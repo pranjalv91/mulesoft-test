@@ -230,7 +230,23 @@ dev_deploy_job:
     - dev
   when: manual
 
+
 echo " "
 echo -e "${GL_GREEN}Export kubeconfig file to login to $ENV cluster...${GL_RESET}"
 echo "export KUBECONFIG=$KUBECONFIG_CONTENT"
 export KUBECONFIG=$KUBECONFIG_CONTENT
+
+
+echo " "
+echo -e "${GL_GREEN}Export kubeconfig file to login to $ENV cluster...${GL_RESET}"
+
+# 1. Decode the Base64 variable into a physical file in the /tmp directory
+echo "$KUBECONFIG_CONTENT" | base64 -d > /tmp/kubeconfig.yaml
+
+# 2. Secure the file permissions (Best practice for kubeconfig files)
+chmod 600 /tmp/kubeconfig.yaml
+
+# 3. Export the path of the physical file
+export KUBECONFIG=/tmp/kubeconfig.yaml
+
+echo -e "${GL_GREEN}Successfully exported KUBECONFIG from Base64 variable.${GL_RESET}"
