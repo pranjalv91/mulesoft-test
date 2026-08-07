@@ -263,3 +263,7 @@ Error: Get "https://h06vksharbor.corp.ad.sbi/v2/": tls: failed to verify certifi
 Logging into harbor registry h06vksharbor.corp.ad.sbi...
 Robot user is robot$eis-cicd
 Error: unknown flag: --insecure-skip-tls-verify
+
+echo "Logging into harbor registry $HARBOR_REGISTRY..."
+echo "Robot user is $HARBOR_REGISTRY_USERNAME"
+echo "$HARBOR_REGISTRY_PASSWORD" | helm registry login --username 'robot$eis-cicd' "$HARBOR_REGISTRY" --password-stdin --insecure
