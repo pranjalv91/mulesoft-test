@@ -250,3 +250,12 @@ chmod 600 /tmp/kubeconfig.yaml
 export KUBECONFIG=/tmp/kubeconfig.yaml
 
 echo -e "${GL_GREEN}Successfully exported KUBECONFIG from Base64 variable.${GL_RESET}"
+
+
+echo "Logging into harbor registry $HARBOR_REGISTRY..."
+echo "Robot user is $HARBOR_REGISTRY_USERNAME"
+echo "$HARBOR_REGISTRY_PASSWORD" | helm registry login --username 'robot$eis-cicd' "$HARBOR_REGISTRY" --insecure-skip-tls-verify --password-stdin
+
+Logging into harbor registry h06vksharbor.corp.ad.sbi...
+Robot user is robot$eis-cicd
+Error: Get "https://h06vksharbor.corp.ad.sbi/v2/": tls: failed to verify certificate: x509: certificate signed by unknown authority
