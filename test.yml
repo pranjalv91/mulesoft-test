@@ -267,3 +267,6 @@ Error: unknown flag: --insecure-skip-tls-verify
 echo "Logging into harbor registry $HARBOR_REGISTRY..."
 echo "Robot user is $HARBOR_REGISTRY_USERNAME"
 echo "$HARBOR_REGISTRY_PASSWORD" | helm registry login --username 'robot$eis-cicd' "$HARBOR_REGISTRY" --password-stdin --insecure
+
+echo "$JFROG_ACCESS_TOKEN" | jf config add default-server --url="$JFROG_URL" --user="$JFROG_USER" --access-token-stdin --interactive=false --insecure-tls
+
