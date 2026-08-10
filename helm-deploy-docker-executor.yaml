@@ -109,11 +109,36 @@ deploy_job:
     - source release_info.env
     - git clone https://oauth2:glpat-[MASKED]@gitlab.sbi/centraliseddevsecops/eis_2.0/eis2.0_blueprint1.0.git blueprint_repo
 
-
-
 xray_job:
   before_script:
     - echo "Configuring JFrog CLI..."
     - echo "$JFROG_ACCESS_TOKEN" | jf config add default-server --url="$JFROG_URL" --access-token-stdin --interactive=false --insecure-tls
   script:
     - jf scan my-app.jar
+
+#This job is used by all internal and external journeys to run a scan on the generated artifact
+.xray_docker_executor_job:
+    #This rule implies that the job will only run when the pipeline is triggered due to code merge or if the code is commited to dev branch and if the changes are inside the app directory
+    rules:
+        - if: '( $CI_PIPELINE_SOURCE == "parent_pipeline" && $CI_COMMIT_REF_NAME =~ /^feature-/ ) || ( $CI_PIPELINE_SOURCE == "parent_pipeline" && $CI_COMMIT_REF_NAME =~ /^hotfix-/ ) || ( $CI_PIPELINE_SOURCE == "parent_pipeline" && $CI_COMMIT_BRANCH == "dev" )'
+          changes:
+            - "$APP_DIR/**"
+            - "$APP_DIR/**/*"
+    before_script: |
+        echo "Configuring JFrog CLI..."
+        echo "$JFROG_UPLOAD_ACCESS_TOKEN" | jf config add default-server --url="$JFROG_CONFIG_URL" --user="$JFROG_UPLOAD_USER" --access-token-stdin --interactive=false --insecure-tls
+    script: |
+        echo "Printing values of Xray Scan Variables..."
+        echo "BASE_M2_PATH=$BASE_M2_PATH"
+        echo "GROUP_ID=$GROUP_ID"
+        echo "APP_NAME=$APP_NAME"
+        echo "APP_VERSION=${!APP_VER}"
+        
+        echo " "
+        echo "Constructing the build path..."
+        BUILD_PATH="${BASE_M2_PATH}/${GROUP_ID}/${APP_NAME}/${!APP_VER}/*.jar"
+        
+        echo " "
+        echo "Running xray scan locally on the runner..."
+        jf scan $BUILD_PATH --watches=EIS2.0 --fail=true #scans the artifact=$BUILD_PATH using the policy defined in watches=EIS2.0. fails the pipeline if the scan returns not 0
+        echo " "
