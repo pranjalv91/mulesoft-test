@@ -13,3 +13,26 @@ Running xray scan locally on the runner...
 11:05:19 [Error] path does not exist: /gitrunner_data/.m2/repository/5a7a14fe-499b-4105-bfaa-81f798b6e755/app-cmp-rar-sapi/1.0.24
 11:05:19 [Info] Trace ID for JFrog Platform logs: 4ead58d14f0add37
 11:05:19 [Error] path does not exist: /gitrunner_data/.m2/repository/5a7a14fe-499b-4105-bfaa-81f798b6e755/app-cmp-rar-sapi/1.0.24
+
+
+Sourcing latest release_info.env file...
+Release number is 1.0.36
+ 
+Clean the escape characters from RELEASE_NUMBER and exporting to CLEAN_RELEASE_NUMBER...
+Clean release number is 1.0.36
+ 
+Exporting CLEAN_RELEASE_NUMBER to JFROG_CLI_BUILD_NUMBER...
+ 
+Printing values of release bundle related variables...
+JFROG_CLI_BUILD_NAME=mule-cmp-rar-internal
+JFROG_CLI_BUILD_NUMBER=1.0.36
+JFROG_CLI_BUILD_PROJECT=eis2
+APP_NAME=app-cmp-rar-sapi
+APP_VERSION=1.0.23
+ 
+Traversing into apps/app-cmp-rar-sapi directory...
+MERGE REQUEST SOURCE BRANCH is not hotfix, incrementing pom version ...
+ 
+APP CHANGE - Starting maven build for app-cmp-rar-sapi...
+12:21:38 [Info] Trace ID for JFrog Platform logs: 99404f966accabbd
+12:21:38 [Error] no config file was found! Before running the 'jf mvn' command on a project for the first time, the project should be configured with the 'jf mvn-config' command
