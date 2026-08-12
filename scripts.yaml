@@ -58,3 +58,94 @@
         echo "Running xray scan locally on the runner..."
         jf scan $BUILD_PATH --watches=EIS2.0 --fail=true
         echo " "
+
+
+.build_appchange_noupload_docker_executor:
+    #This rule implies that the job will only run when the pipeline is triggered due to code merge or if the code is commited to dev branch and if the changes are inside the app directory
+    rules:
+        - if: '( $CI_PIPELINE_SOURCE == "parent_pipeline" && $CI_COMMIT_REF_NAME =~ /^feature-/ ) || ( $CI_PIPELINE_SOURCE == "parent_pipeline" && $CI_COMMIT_REF_NAME =~ /^hotfix-/ ) || ( $CI_PIPELINE_SOURCE == "parent_pipeline" && $CI_COMMIT_BRANCH == "dev" )'
+          changes:
+            - "$APP_DIR/**"
+            - "$APP_DIR/**/*"
+    script: |
+        echo "Sourcing latest release_info.env file..."
+        source release_info.env
+        echo "Release number is $RELEASE_NUMBER"
+
+        echo " "
+        echo "Clean the escape characters from RELEASE_NUMBER and exporting to CLEAN_RELEASE_NUMBER..."
+        CLEAN_RELEASE_NUMBER=$(echo "$RELEASE_NUMBER" | tr -d '\r\n')
+        echo "Clean release number is $CLEAN_RELEASE_NUMBER"
+
+        echo " "
+        echo "Exporting CLEAN_RELEASE_NUMBER to JFROG_CLI_BUILD_NUMBER..."
+        JFROG_CLI_BUILD_NUMBER="$CLEAN_RELEASE_NUMBER"
+
+        echo " "
+        echo "Printing values of release bundle related variables..."
+        echo "JFROG_CLI_BUILD_NAME=$JFROG_CLI_BUILD_NAME"
+        echo "JFROG_CLI_BUILD_NUMBER=$JFROG_CLI_BUILD_NUMBER"
+        echo "JFROG_CLI_BUILD_PROJECT=$JFROG_CLI_BUILD_PROJECT"
+        echo "APP_NAME=$APP_NAME"
+        echo "APP_VERSION=${!APP_VER}"
+ 
+        echo " "
+        echo "Traversing into ${APP_DIR} directory..."
+        cd "$APP_DIR"
+
+        # If merge request source branch is hotfix then skip the incrementing pom version
+        if [[ "$CI_PIPELINE_SOURCE" == "parent_pipeline" && "$CI_COMMIT_REF_NAME" =~ ^hotfix- ]]; then
+          echo "MERGE REQUEST SOURCE BRANCH is hotfix, skipping incrementing pom version ..."
+
+          echo " "
+          echo "APP CHANGE - Starting maven build for ${APP_NAME}..."
+          JFROG_CLI_BUILD_NAME=$JFROG_CLI_BUILD_NAME JFROG_CLI_BUILD_NUMBER=$JFROG_CLI_BUILD_NUMBER JFROG_CLI_BUILD_PROJECT=$JFROG_CLI_BUILD_PROJECT jf mvn clean install -U -DskipTests -Dmaven.repo.local=/gitrunner_data/.m2/repository -Dartifactory.publish.artifacts=false
+
+          echo " "
+          echo "Copying JAR from build path to hotfix path with -hotfix- string appended to JAR file name..."
+          SOURCE_INSTALL_PATH="${BASE_M2_PATH}/${GROUP_ID}/${APP_NAME}/${!APP_VER}"
+          DESTINATION_HOTFIX_PATH="${BASE_M2_PATH}/${GROUP_ID}/${APP_NAME}/${!APP_VER}-hotfix"
+
+          echo " "
+          echo "Print SOURCE_PATH and DESTINATION PATH before copying hotfix JAR..."
+          echo "SOURCE_INSTALL_PATH=$SOURCE_INSTALL_PATH"
+          echo "DESTINATION_HOTFIX_PATH=$DESTINATION_HOTFIX_PATH"
+
+          echo " "
+          echo "Copy JAR from SOURCE_INSTALL_PATH to DESTINATION_HOTFIX_PATH..."
+          mkdir -p "${DESTINATION_HOTFIX_PATH}" && cp "${SOURCE_INSTALL_PATH}/${APP_NAME}-${!APP_VER}-mule-application.jar" "${DESTINATION_HOTFIX_PATH}/${APP_NAME}-${!APP_VER}-hotfix-mule-application.jar"
+
+          echo " "
+          echo "Verify JAR under hotfix folder path after copying..."
+          ls -lhrt "${DESTINATION_HOTFIX_PATH}"
+        else
+          echo "MERGE REQUEST SOURCE BRANCH is not hotfix, incrementing pom version ..."
+          mvn -q build-helper:parse-version versions:set -DnewVersion=\${parsedVersion.majorVersion}.\${parsedVersion.minorVersion}.\${parsedVersion.nextIncrementalVersion} versions:commit  #increments the pom patch version by 1
+
+          echo " "
+          echo "APP CHANGE - Starting maven build for ${APP_NAME}..."
+          JFROG_CLI_BUILD_NAME=$JFROG_CLI_BUILD_NAME JFROG_CLI_BUILD_NUMBER=$JFROG_CLI_BUILD_NUMBER JFROG_CLI_BUILD_PROJECT=$JFROG_CLI_BUILD_PROJECT jf mvn clean install -U -DskipTests -Dmaven.repo.local=/gitrunner_data/.m2/repository -Dartifactory.publish.artifacts=false
+        fi
+
+        echo " "
+        echo "Storing incremented version in VERSION variable..."
+        VERSION=$(mvn help:evaluate -Dexpression=project.version -q -DforceStdout | tr -d '\r\n') #gets updated version value from the pom.xml
+        echo $VERSION
+
+        echo " "
+        echo "Exporting updated version as APP_VERSION key in $APP_VER.env file..."
+        echo "$APP_VER=$VERSION" > $APP_VER.env #updates version value into the original .env file
+        echo "Publish contents of $APP_VER.env file for verification..."
+        cat $APP_VER.env
+
+    #saves the .env file as an artifact for the next job
+    artifacts:
+        paths:
+            - "$APP_DIR/pom.xml"
+            - "$APP_DIR/$APP_VER.env"
+            - "$APP_DIR/target/*.jar"
+        reports:
+            dotenv:
+                - "$APP_DIR/$APP_VER.env"
+        expire_in: 1 hour
+        when: on_success
