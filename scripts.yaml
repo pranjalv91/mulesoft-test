@@ -24,3 +24,37 @@
         echo "Running xray scan locally on the runner..."
         jf scan $BUILD_PATH --watches=EIS2.0 --fail=true #scans the artifact=$BUILD_PATH using the policy defined in watches=EIS2.0. fails the pipeline if the scan returns not 0
         echo " "
+
+
+.xray_docker_executor_job:
+    # This rule implies that the job will only run when the pipeline is triggered due to code merge or if the code is committed to dev branch and if the changes are inside the app directory
+    rules:
+        - if: '( $CI_PIPELINE_SOURCE == "parent_pipeline" && $CI_COMMIT_REF_NAME =~ /^feature-/ ) || ( $CI_PIPELINE_SOURCE == "parent_pipeline" && $CI_COMMIT_REF_NAME =~ /^hotfix-/ ) || ( $CI_PIPELINE_SOURCE == "parent_pipeline" && $CI_COMMIT_BRANCH == "dev" )'
+          changes:
+            - "$APP_DIR/**"
+            - "$APP_DIR/**/*"
+    before_script: |
+        echo "Configuring JFrog CLI..."
+        echo "$JFROG_UPLOAD_ACCESS_TOKEN" | jf config add default-server --url="$JFROG_CONFIG_URL" --user="$JFROG_UPLOAD_USER" --access-token-stdin --interactive=false --insecure-tls
+        echo " "
+    script: |
+        echo "Printing values of Xray Scan Variables..."
+        echo "APP_DIR=$APP_DIR"
+        echo "APP_NAME=$APP_NAME"
+        
+        # POSIX-compliant indirect expansion
+        APP_VERSION=$(eval echo "\$$APP_VER")
+        echo "APP_VERSION=$APP_VERSION"
+        
+        echo " "
+        echo "Locating downloaded artifact..."
+        # Point directly to where GitLab extracted the artifact from the build job
+        BUILD_PATH="${APP_DIR}/target/*.jar"
+        
+        echo "Verifying artifact exists..."
+        ls -lh $BUILD_PATH || { echo "ERROR: Artifact not found at $BUILD_PATH!"; exit 1; }
+        
+        echo " "
+        echo "Running xray scan locally on the runner..."
+        jf scan $BUILD_PATH --watches=EIS2.0 --fail=true
+        echo " "
