@@ -1,0 +1,15 @@
+Printing values of Xray Scan Variables...
+BASE_M2_PATH=/gitrunner_data/.m2/repository
+GROUP_ID=5a7a14fe-499b-4105-bfaa-81f798b6e755
+APP_NAME=app-cmp-rar-sapi
+APP_VERSION=1.0.24
+ 
+Constructing the build path...
+ 
+Running xray scan locally on the runner...
+11:05:17 [Info] JFrog Xray Indexer 3.124.21 is not cached locally. Downloading it now...
+2026/08/12 11:05:19 maxprocs: Leaving GOMAXPROCS=8: CPU quota undefined
+11:05:19 [Info] The downloaded Xray Indexer version is 3.124.21
+11:05:19 [Error] path does not exist: /gitrunner_data/.m2/repository/5a7a14fe-499b-4105-bfaa-81f798b6e755/app-cmp-rar-sapi/1.0.24
+11:05:19 [Info] Trace ID for JFrog Platform logs: 4ead58d14f0add37
+11:05:19 [Error] path does not exist: /gitrunner_data/.m2/repository/5a7a14fe-499b-4105-bfaa-81f798b6e755/app-cmp-rar-sapi/1.0.24
