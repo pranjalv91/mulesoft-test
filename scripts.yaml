@@ -151,7 +151,12 @@
         when: on_success
 
 
-        script: |
+Updated script section for build job for docker executor
+
+before_script: |
+    echo "Configuring JFrog CLI..."
+    echo "$JFROG_UPLOAD_ACCESS_TOKEN" | jf config add default-server --url="$JFROG_CONFIG_URL" --user="$JFROG_UPLOAD_USER" --access-token-stdin --interactive=false --insecure-tls
+script: |
     echo "Sourcing latest release_info.env file..."
     source release_info.env
     echo "Release number is $RELEASE_NUMBER"
@@ -172,7 +177,7 @@
     echo "JFROG_CLI_BUILD_PROJECT=$JFROG_CLI_BUILD_PROJECT"
     echo "APP_NAME=$APP_NAME"
     
-    # ⚠️ POSIX-COMPLIANT FIX: Replace ${!APP_VER} to prevent "bad substitution" in Docker sh
+    # POSIX-COMPLIANT FIX: Replace ${!APP_VER} to prevent "bad substitution" in Docker sh
     APP_VERSION=$(eval echo "\$$APP_VER")
     echo "APP_VERSION=$APP_VERSION"
 
@@ -182,10 +187,10 @@
 
     echo " "
     echo "Generating non-interactive JFrog Maven configuration..."
-    # ⚠️ ACTION REQUIRED: Replace 'YOUR-VIRTUAL-REPO' with the actual Artifactory repository name you use to resolve Maven dependencies
+    # ACTION REQUIRED: Replace 'YOUR-VIRTUAL-REPO' with the actual Artifactory repository name you use to resolve Maven dependencies
     jf mvn-config --server-id-resolve=default-server --repo-resolve-releases=YOUR-VIRTUAL-REPO --repo-resolve-snapshots=YOUR-VIRTUAL-REPO
     
-    # ⚠️ DOCKER PATH FIX: /gitrunner_data does not exist inside the Docker container. 
+    # DOCKER PATH FIX: /gitrunner_data does not exist inside the Docker container. 
     # Swapped -Dmaven.repo.local to a path inside the container workspace.
     MAVEN_CMD="jf mvn clean install -U -DskipTests -Dmaven.repo.local=$CI_PROJECT_DIR/.m2/repository -Dartifactory.publish.artifacts=false"
 
