@@ -266,3 +266,36 @@ script: |
 
     export JFROG_CLI_EXTRACTORS_REMOTE="eis2-maven-virtual"
     export JFROG_CLI_RELEASES_REPO="eis2-maven-virtual"
+
+
+
+
+
+    echo " "
+    echo "Traversing into ${APP_DIR} directory..."
+    cd "$APP_DIR"
+
+    echo " "
+    echo "Setting JFrog Home to workspace to ensure configuration saves correctly..."
+    # This prevents the silent "Server ID does not exist" Docker bug
+    export JFROG_CLI_HOME_DIR="$CI_PROJECT_DIR/.jfrog"
+    export JF_HOME="$CI_PROJECT_DIR/.jfrog"
+
+    echo " "
+    echo "Creating Server ID eis2.0_jf..."
+    # We are back to using the same server ID your shell runner used
+    echo "$JFROG_UPLOAD_ACCESS_TOKEN" | jf config add eis2.0_jf --url="$JFROG_CONFIG_URL" --user="$JFROG_UPLOAD_USER" --access-token-stdin --interactive=false --insecure-tls
+
+    echo " "
+    echo "Decoding and injecting the JFrog maven.yaml file..."
+    mkdir -p .jfrog/projects
+    echo "$JFROG_MAVEN_YAML_B64" | base64 -d > .jfrog/projects/maven.yaml
+
+    echo " "
+    echo "Setting Air-Gapped Extractor Path..."
+    # Now that eis2.0_jf exists, we can pass it in the exact format the CLI demands
+    export JFROG_CLI_EXTRACTORS_REMOTE="eis2.0_jf/eis2-maven-virtual"
+
+    echo " "
+    echo "Defining standard Maven command..."
+    MAVEN_CMD="jf mvn clean install -U -DskipTests -Dmaven.repo.local=$CI_PROJECT_DIR/.m2/repository -Dartifactory.publish.artifacts=false"
