@@ -104,3 +104,59 @@ Downloading from central: https://repo.maven.apache.org/maven2/org/mule/runtime/
 [ERROR]         Could not find artifact org.mule.runtime:mule-core:jar:4.4.0 in central (https://repo.maven.apache.org/maven2)
 [ERROR]
 [ERROR] -> [Help 1]
+
+
+
+
+
+11:14:14 [Info] The build-info-extractor jar is not cached locally. Downloading it now...
+You can set the repository from which this jar is downloaded.
+Read more about it at https://docs.jfrog-applications.jfrog.io/jfrog-applications/jfrog-cli/binaries-management-with-jfrog-artifactory/package-managers-integration#downloading-the-maven-and-gradle-extractor-jars
+11:14:14 [Info] Downloading JFrog's Dependency from https://releases.jfrog.io/artifactory/oss-release-local/org/jfrog/buildinfo/build-info-extractor-maven3/2.42.1/build-info-extractor-maven3-2.42.1-uber.jar
+11:14:14 [Warn] (Attempt 1) - Failure occurred while sending HEAD request to https://releases.jfrog.io/artifactory/oss-release-local/org/jfrog/buildinfo/build-info-extractor-maven3/2.42.1/build-info-extractor-maven3-2.42.1-uber.jar: Head "https://releases.jfrog.io/artifactory/oss-release-local/org/jfrog/buildinfo/build-info-extractor-maven3/2.42.1/build-info-extractor-maven3-2.42.1-uber.jar": dial tcp: lookup releases.jfrog.io on 10.0.2.3:53: server misbehaving
+11:14:14 [Info] executor timeout after 0 attempts with 0 milliseconds wait intervals
+11:14:14 [Warn] Failed to get remote file details.
+ Got: Head "https://releases.jfrog.io/artifactory/oss-release-local/org/jfrog/buildinfo/build-info-extractor-maven3/2.42.1/build-info-extractor-maven3-2.42.1-uber.jar": dial tcp: lookup releases.jfrog.io on 10.0.2.3:53: server misbehaving
+11:14:14 [Warn] (Attempt 1) - Failure occurred while sending GET request to https://releases.jfrog.io/artifactory/oss-release-local/org/jfrog/buildinfo/build-info-extractor-maven3/2.42.1/build-info-extractor-maven3-2.42.1-uber.jar: Get "https://releases.jfrog.io/artifactory/oss-release-local/org/jfrog/buildinfo/build-info-extractor-maven3/2.42.1/build-info-extractor-maven3-2.42.1-uber.jar": dial tcp: lookup releases.jfrog.io on 10.0.2.3:53: server misbehaving
+11:14:14 [Info] executor timeout after 0 attempts with 0 milliseconds wait intervals
+11:14:14 [Warn] (Attempt 1) - Failure occurred while downloading https://releases.jfrog.io/artifactory/oss-release-local/org/jfrog/buildinfo/build-info-extractor-maven3/2.42.1/build-info-extractor-maven3-2.42.1-uber.jar: Get "https://releases.jfrog.io/artifactory/oss-release-local/org/jfrog/buildinfo/build-info-extractor-maven3/2.42.1/build-info-extractor-maven3-2.42.1-uber.jar": dial tcp: lookup releases.jfrog.io on 10.0.2.3:53: server misbehaving
+11:14:14 [Info] executor timeout after 0 attempts with 0 milliseconds wait intervals
+panic: runtime error: invalid memory address or nil pointer dereference
+[signal SIGSEGV: segmentation violation code=0x1 addr=0x10 pc=0x7c03d2]
+goroutine 1 [running]:
+github.com/jfrog/jfrog-client-go/utils/errorutils.CheckResponseStatus(0xc000084b60?, {0xc000698f98?, 0xc000699030?, 0xc00012da40?})
+	/root/go/pkg/mod/github.com/jfrog/jfrog-client-go@v1.54.3/utils/errorutils/errorutils.go:29 +0x32
+github.com/jfrog/jfrog-cli-core/v2/utils/dependencies.DownloadDependency(0xc00055d6c0, {0xc000355180?, 0x0?}, {0xc000383680, 0x52}, 0x0)
+	/root/go/pkg/mod/github.com/jfrog/jfrog-cli-core/v2@v2.59.3/utils/dependencies/utils.go:163 +0x77e
+github.com/jfrog/jfrog-cli-core/v2/utils/dependencies.DownloadExtractor({0xc000383680, 0x52}, {0xc000216850?, 0x40?})
+	/root/go/pkg/mod/github.com/jfrog/jfrog-cli-core/v2@v2.59.3/utils/dependencies/utils.go:37 +0x4b
+github.com/jfrog/build-info-go/utils.downloadExtractorIfNeeded({0xc000381c20, 0x26}, {0xc000381c50?, 0x528cda?}, {0xc000216850, 0x62}, 0x233fae8, {0x7f8484f3de08, 0xc0005e88a0})
+	/root/go/pkg/mod/github.com/jfrog/build-info-go@v1.10.14/utils/dependenciesutils.go:39 +0x232
+github.com/jfrog/build-info-go/utils.DownloadDependencies({0xc000381c20, 0x26}, {0xc000381c50, 0x2b}, {0xc000369b40?, 0x2f00000000000026?}, 0x233fae8, {0x7f8484f3de08, 0xc0005e88a0})
+	/root/go/pkg/mod/github.com/jfrog/build-info-go@v1.10.14/utils/dependenciesutils.go:77 +0xc5
+github.com/jfrog/build-info-go/build.downloadMavenExtractor({0xc000381c20, 0x26}, 0x233fae8, {0x7f8484f3de08, 0xc0005e88a0})
+	/root/go/pkg/mod/github.com/jfrog/build-info-go@v1.10.14/build/maven.go:301 +0xe7
+github.com/jfrog/build-info-go/build.(*MavenModule).CalcDependencies(0xc000470820)
+	/root/go/pkg/mod/github.com/jfrog/build-info-go@v1.10.14/build/maven.go:178 +0x93
+github.com/jfrog/jfrog-cli-artifactory/artifactory/commands/mvn.RunMvn(0xc0006994b8)
+	/root/go/pkg/mod/github.com/jfrog/jfrog-cli-artifactory@v0.5.1/artifactory/commands/mvn/utils.go:126 +0x548
+github.com/jfrog/jfrog-cli-artifactory/artifactory/commands/mvn.(*MvnCommand).Run(0xc000629e00)
+	/root/go/pkg/mod/github.com/jfrog/jfrog-cli-artifactory@v0.5.1/artifactory/commands/mvn/mvn.go:151 +0xd5
+github.com/jfrog/jfrog-cli-core/v2/common/commands.Exec({0x25d0aa8, 0xc000629e00})
+	/root/go/pkg/mod/github.com/jfrog/jfrog-cli-core/v2@v2.59.3/common/commands/command.go:36 +0x96
+github.com/jfrog/jfrog-cli/buildtools.MvnCmd(0xc00038ec60)
+	/var/jenkins_home/workspace/eco-system/release/jfrog-cli-release/temp/jfrog-cli/buildtools/cli.go:502 +0x42b
+github.com/jfrog/jfrog-cli-security/cli.WrapCmdWithCurationPostFailureRun(0xc00038ec60, 0xc000699710?, {0x21a29d9, 0x5}, {0x7ffe52e6cedc, 0x5})
+	/root/go/pkg/mod/github.com/jfrog/jfrog-cli-security@v1.20.2/cli/scancommands.go:540 +0x32
+github.com/jfrog/jfrog-cli/buildtools.GetCommands.func2(0xc00038ec60)
+	/var/jenkins_home/workspace/eco-system/release/jfrog-cli-release/temp/jfrog-cli/buildtools/cli.go:116 +0x14e
+github.com/urfave/cli.HandleAction({0x1ce65c0?, 0x233ee60?}, 0x3?)
+	/root/go/pkg/mod/github.com/urfave/cli@v1.22.16/app.go:524 +0x70
+github.com/urfave/cli.Command.Run({{0x219f444, 0x3}, {0x0, 0x0}, {0x0, 0x0, 0x0}, {0x21d0056, 0x10}, {0x22b0660, ...}, ...}, ...)
+	/root/go/pkg/mod/github.com/urfave/cli@v1.22.16/command.go:175 +0x676
+github.com/urfave/cli.(*App).Run(0xc000254fc0, {0xc000256000, 0x8, 0x8})
+	/root/go/pkg/mod/github.com/urfave/cli@v1.22.16/app.go:277 +0xb1b
+main.execMain()
+	/var/jenkins_home/workspace/eco-system/release/jfrog-cli-release/temp/jfrog-cli/main.go:134 +0x48a
+main.main()
+	/var/jenkins_home/workspace/eco-system/release/jfrog-cli-release/temp/jfrog-cli/main.go:71 +0x
