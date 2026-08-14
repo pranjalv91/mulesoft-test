@@ -1,0 +1,11 @@
+version: 1
+type: maven
+resolver:
+    serverId: eis2.0_jf
+    snapshotRepo: eis2-maven-virtual
+    releaseRepo: eis2-maven-virtual
+deployer:
+    serverId: eis2.0_jf
+    snapshotRepo: eis2-maven-virtual
+    releaseRepo: eis2-maven-virtual
+useWrapper: true
