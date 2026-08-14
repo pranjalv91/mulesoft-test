@@ -160,3 +160,6 @@ main.execMain()
 	/var/jenkins_home/workspace/eco-system/release/jfrog-cli-release/temp/jfrog-cli/main.go:134 +0x48a
 main.main()
 	/var/jenkins_home/workspace/eco-system/release/jfrog-cli-release/temp/jfrog-cli/main.go:71 +0x
+
+11:34:17 [Info] Trace ID for JFrog Platform logs: 4d855e842fed13df
+11:34:17 [Error] 'JFROG_CLI_EXTRACTORS_REMOTE' environment variable is 'eis2-maven-virtual' but should be '<server ID>/<repo name>'
