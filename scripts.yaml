@@ -262,3 +262,7 @@ script: |
     echo " "
     echo "Defining standard Maven command..."
     MAVEN_CMD="jf mvn clean install -U -DskipTests -Dmaven.repo.local=$CI_PROJECT_DIR/.m2/repository -Dartifactory.publish.artifacts=false"
+
+
+    export JFROG_CLI_EXTRACTORS_REMOTE="eis2-maven-virtual"
+    export JFROG_CLI_RELEASES_REPO="eis2-maven-virtual"
