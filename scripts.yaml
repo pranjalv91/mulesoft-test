@@ -238,3 +238,27 @@ script: |
     echo "$APP_VER=$VERSION" > $APP_VER.env
     echo "Publish contents of $APP_VER.env file for verification..."
     cat $APP_VER.env
+
+
+
+
+
+    echo " "
+    echo "Traversing into ${APP_DIR} directory..."
+    cd "$APP_DIR"
+
+    echo " "
+    echo "Decoding and injecting the JFrog maven.yaml file..."
+    mkdir -p .jfrog/projects
+    echo "$JFROG_MAVEN_YAML_B64" | base64 -d > .jfrog/projects/maven.yaml
+
+    echo " "
+    echo "Authenticating JFrog natively via environment variables..."
+    export JF_URL="$JFROG_CONFIG_URL"
+    export JF_USER="$JFROG_UPLOAD_USER"
+    export JF_ACCESS_TOKEN="$JFROG_UPLOAD_ACCESS_TOKEN"
+    export JF_INSECURE_TLS="true"
+
+    echo " "
+    echo "Defining standard Maven command..."
+    MAVEN_CMD="jf mvn clean install -U -DskipTests -Dmaven.repo.local=$CI_PROJECT_DIR/.m2/repository -Dartifactory.publish.artifacts=false"
