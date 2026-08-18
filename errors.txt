@@ -165,10 +165,6 @@ main.main()
 11:34:17 [Error] 'JFROG_CLI_EXTRACTORS_REMOTE' environment variable is 'eis2-maven-virtual' but should be '<server ID>/<repo name>'
 
 
-
-
-
-
 Executing "step_script" stage of the job script
 00:12
 Using effective pull policy of [if-not-present] for container artifactory.jfrog.sbi:443/dso-base-image/helm/helm4.2:v4.2
@@ -232,3 +228,23 @@ APP CHANGE - Starting maven build for app-cmp-rar-sapi...
 12:06:53 [Debug] Saving build general details at: /tmp/jfrog/builds/2e99170cab186f923c5e7d4c419c0f9eb5357fbecb23706a0b918e118a519757/partials
 12:06:53 [Info] Trace ID for JFrog Platform logs: 8f5d7c396c562a78
 12:06:53 [Error] Server ID 'eis2jf' does not exist.
+
+
+echo " "
+        echo "Setting JFrog Home to workspace to ensure configuration saves correctly..."
+        export JFROG_CLI_HOME_DIR="$CI_PROJECT_DIR/.jfrog"
+        export JF_HOME="$CI_PROJECT_DIR/.jfrog"
+        export JFROG_CLI_LOG_LEVEL=DEBUG
+        
+        # 🟢 NEW: Stop the CLI from attempting to reach the internet for version updates
+        export JFROG_CLI_AVOID_NEW_VERSION_WARNING=true
+
+        echo " "
+        echo "Creating Server ID eis2jf..."
+        
+        # 🟢 UPDATED: Completely removed the "echo |" pipe and the "--access-token-stdin" flag. 
+        # The token is now passed directly as a string parameter.
+        jf config add eis2jf --url="$JFROG_CONFIG_URL" --user="$JFROG_UPLOAD_USER" --access-token="$JFROG_UPLOAD_ACCESS_TOKEN" --interactive=false --insecure-tls
+
+        echo " "
+        echo "Decoding and injecting the JFrog maven.yaml file..."
