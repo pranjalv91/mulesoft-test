@@ -163,3 +163,72 @@ main.main()
 
 11:34:17 [Info] Trace ID for JFrog Platform logs: 4d855e842fed13df
 11:34:17 [Error] 'JFROG_CLI_EXTRACTORS_REMOTE' environment variable is 'eis2-maven-virtual' but should be '<server ID>/<repo name>'
+
+
+
+
+
+
+Executing "step_script" stage of the job script
+00:12
+Using effective pull policy of [if-not-present] for container artifactory.jfrog.sbi:443/dso-base-image/helm/helm4.2:v4.2
+Using docker image sha256:0b1db5db172f25085fbe6e89908ce9dbb2addac8e6dc90c9e8228e3b66c18b9e for artifactory.jfrog.sbi:443/dso-base-image/helm/helm4.2:v4.2 with digest artifactory.jfrog.sbi:443/dso-base-image/helm/helm4.2@sha256:8557fcb69fb8662a74f85fc3fcd0e55858369633c8d305cc799aaa9a820c6e24 ...
+$ echo "Sourcing latest release_info.env file..." # collapsed multi-line command
+Sourcing latest release_info.env file...
+Release number is 1.0.36
+ 
+Clean the escape characters from RELEASE_NUMBER and exporting to CLEAN_RELEASE_NUMBER...
+Clean release number is 1.0.36
+ 
+Exporting CLEAN_RELEASE_NUMBER to JFROG_CLI_BUILD_NUMBER...
+ 
+Printing values of release bundle related variables...
+JFROG_CLI_BUILD_NAME=mule-cmp-rar-internal
+JFROG_CLI_BUILD_NUMBER=1.0.36
+JFROG_CLI_BUILD_PROJECT=eis2
+APP_NAME=app-cmp-rar-sapi
+APP_VERSION=1.0.23
+ 
+Traversing into apps/app-cmp-rar-sapi directory...
+ 
+Setting JFrog Home to workspace to ensure configuration saves correctly...
+ 
+ 
+Creating Server ID eis2jf...
+12:06:43 [Debug] JFrog CLI version: 2.78.1
+12:06:43 [Debug] OS/Arch: linux/amd64
+12:06:43 [Debug] failed while trying to check latest JFrog CLI version: couldn't get latest JFrog CLI latest version info from GitHub API: Get "https://api.github.com/repos/jfrog/jfrog-cli/releases/latest": dial tcp: lookup api.github.com on 10.176.53.145:53: no such host
+12:06:43 [Debug] Trace ID for JFrog Platform logs: 4e0fff204d1fab58
+12:06:43 [Debug] Using access-token provided via Stdin
+12:06:43 [Debug] Locking config file to run config AddOrEdit command.
+12:06:43 [Debug] Creating lock in: /builds/eis_2.0/mule-cmp-rar-internal/.jfrog/locks/config
+12:06:43 [Debug] config file is released.
+12:06:43 [Debug] Releasing lock: /builds/eis_2.0/mule-cmp-rar-internal/.jfrog/locks/config/jfrog-cli.conf.lck.21.1787054803381376606
+ 
+Decoding and injecting the JFrog maven.yaml file...
+ 
+Verify generated maven.yaml file contents...
+version: 1
+type: maven
+resolver:
+  serverId: eis2jf
+  snapshotRepo: eis2-maven-virtual
+  releaseRepo: eis2-maven-virtual
+deployer:
+  serverId: eis2jf
+  snapshotRepo: eis2-maven-virtual
+  releaseRepo: eis2-maven-virtual
+useWrapper: true 
+Setting Air-Gapped Extractor Path...
+ 
+Defining standard Maven command...
+MERGE REQUEST SOURCE BRANCH is not hotfix, incrementing pom version ...
+ 
+APP CHANGE - Starting maven build for app-cmp-rar-sapi...
+12:06:53 [Debug] JFrog CLI version: 2.78.1
+12:06:53 [Debug] OS/Arch: linux/amd64
+12:06:53 [Debug] Trace ID for JFrog Platform logs: 8f5d7c396c562a78
+12:06:53 [Debug] Usage reporting. Failed accessing ServerDetails. Server ID 'eis2jf' does not exist.
+12:06:53 [Debug] Saving build general details at: /tmp/jfrog/builds/2e99170cab186f923c5e7d4c419c0f9eb5357fbecb23706a0b918e118a519757/partials
+12:06:53 [Info] Trace ID for JFrog Platform logs: 8f5d7c396c562a78
+12:06:53 [Error] Server ID 'eis2jf' does not exist.
