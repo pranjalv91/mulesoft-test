@@ -299,3 +299,116 @@ script: |
     echo " "
     echo "Defining standard Maven command..."
     MAVEN_CMD="jf mvn clean install -U -DskipTests -Dmaven.repo.local=$CI_PROJECT_DIR/.m2/repository -Dartifactory.publish.artifacts=false"
+
+
+
+
+    .build_appchange_noupload_docker_executor:
+    #This rule implies that the job will only run when the pipeline is triggered due to code merge or if the code is commited to dev branch and if the changes are inside the app directory
+    rules:
+        - if: '( $CI_PIPELINE_SOURCE == "parent_pipeline" && $CI_COMMIT_REF_NAME =~ /^feature-/ ) || ( $CI_PIPELINE_SOURCE == "parent_pipeline" && $CI_COMMIT_REF_NAME =~ /^hotfix-/ ) || ( $CI_PIPELINE_SOURCE == "parent_pipeline" && $CI_COMMIT_BRANCH == "dev" )'
+          changes:
+            - "$APP_DIR/**"
+            - "$APP_DIR/**/*"
+    script: |
+        echo "Sourcing latest release_info.env file..."
+        source release_info.env
+        echo "Release number is $RELEASE_NUMBER"
+
+        echo " "
+        echo "Clean the escape characters from RELEASE_NUMBER and exporting to CLEAN_RELEASE_NUMBER..."
+        CLEAN_RELEASE_NUMBER=$(echo "$RELEASE_NUMBER" | tr -d '\r\n')
+        echo "Clean release number is $CLEAN_RELEASE_NUMBER"
+
+        echo " "
+        echo "Exporting CLEAN_RELEASE_NUMBER to JFROG_CLI_BUILD_NUMBER..."
+        JFROG_CLI_BUILD_NUMBER="$CLEAN_RELEASE_NUMBER"
+
+        echo " "
+        echo "Printing values of release bundle related variables..."
+        echo "JFROG_CLI_BUILD_NAME=$JFROG_CLI_BUILD_NAME"
+        echo "JFROG_CLI_BUILD_NUMBER=$JFROG_CLI_BUILD_NUMBER"
+        echo "JFROG_CLI_BUILD_PROJECT=$JFROG_CLI_BUILD_PROJECT"
+        echo "APP_NAME=$APP_NAME"
+
+        # POSIX-COMPLIANT FIX: Replace ${!APP_VER} to prevent "bad substitution" in Docker sh
+        APP_VERSION=$(eval echo "\$$APP_VER")
+        echo "APP_VERSION=$APP_VERSION"
+ 
+        echo " "
+        echo "Traversing into ${APP_DIR} directory..."
+        cd "$APP_DIR"
+
+        echo " "
+        echo "Setting JFrog Home to workspace to ensure configuration saves correctly..."
+        # This prevents the silent "Server ID does not exist" Docker bug
+        export JFROG_CLI_HOME_DIR="$CI_PROJECT_DIR/.jfrog"
+        export JF_HOME="$CI_PROJECT_DIR/.jfrog"
+
+        echo " "
+        echo "Creating Server ID eis2.0_jf..."
+        # We are back to using the same server ID your shell runner used
+        echo "$JFROG_UPLOAD_ACCESS_TOKEN" | jf config add eis2.0_jf --url="$JFROG_CONFIG_URL" --user="$JFROG_UPLOAD_USER" --access-token-stdin --interactive=false --insecure-tls
+
+        echo " "
+        echo "Decoding and injecting the JFrog maven.yaml file..."
+        mkdir -p .jfrog/projects
+        echo "$JFROG_MAVEN_YAML_B64" | base64 -d | tr -d '\r' > .jfrog/projects/maven.yaml
+
+        echo " "
+        echo "Verify generated maven.yaml file contents..."
+        cat .jfrog/projects/maven.yaml
+
+        echo " "
+        echo "Setting Air-Gapped Extractor Path..."
+        # Now that eis2.0_jf exists, we can pass it in the exact format the CLI demands
+        export JFROG_CLI_RELEASES_REPO="eis2.0_jf/eis2-maven-virtual"
+
+        echo " "
+        echo "Defining standard Maven command..."
+        MAVEN_CMD="jf mvn clean install -U -DskipTests -Dmaven.repo.local=$CI_PROJECT_DIR/.m2/repository -Dartifactory.publish.artifacts=false"
+
+        # If merge request source branch is hotfix then skip the incrementing pom version
+        if [[ "$CI_PIPELINE_SOURCE" == "parent_pipeline" && "$CI_COMMIT_REF_NAME" =~ ^hotfix- ]]; then
+          echo "MERGE REQUEST SOURCE BRANCH is hotfix, skipping incrementing pom version ..."
+
+          echo " "
+          echo "APP CHANGE - Starting maven build for ${APP_NAME}..."
+          JFROG_CLI_BUILD_NAME=$JFROG_CLI_BUILD_NAME JFROG_CLI_BUILD_NUMBER=$JFROG_CLI_BUILD_NUMBER JFROG_CLI_BUILD_PROJECT=$JFROG_CLI_BUILD_PROJECT eval $MAVEN_CMD
+
+          echo " "
+          echo "Copying JAR from build path to hotfix path with -hotfix- string appended to JAR file name..."
+          SOURCE_INSTALL_PATH="${BASE_M2_PATH}/${GROUP_ID}/${APP_NAME}/${APP_VERSION}"
+          DESTINATION_HOTFIX_PATH="${BASE_M2_PATH}/${GROUP_ID}/${APP_NAME}/${APP_VERSION}-hotfix"
+
+          echo " "
+          echo "Print SOURCE_PATH and DESTINATION PATH before copying hotfix JAR..."
+          echo "SOURCE_INSTALL_PATH=$SOURCE_INSTALL_PATH"
+          echo "DESTINATION_HOTFIX_PATH=$DESTINATION_HOTFIX_PATH"
+
+          echo " "
+          echo "Copy JAR from SOURCE_INSTALL_PATH to DESTINATION_HOTFIX_PATH..."
+          mkdir -p "${DESTINATION_HOTFIX_PATH}" && cp "${SOURCE_INSTALL_PATH}/${APP_NAME}-${APP_VERSION}-mule-application.jar" "${DESTINATION_HOTFIX_PATH}/${APP_NAME}-${APP_VERSION}-hotfix-mule-application.jar"
+
+          echo " "
+          echo "Verify JAR under hotfix folder path after copying..."
+          ls -lhrt "${DESTINATION_HOTFIX_PATH}"
+        else
+          echo "MERGE REQUEST SOURCE BRANCH is not hotfix, incrementing pom version ..."
+          mvn -q build-helper:parse-version versions:set -DnewVersion=\${parsedVersion.majorVersion}.\${parsedVersion.minorVersion}.\${parsedVersion.nextIncrementalVersion} versions:commit  #increments the pom patch version by 1
+
+          echo " "
+          echo "APP CHANGE - Starting maven build for ${APP_NAME}..."
+          JFROG_CLI_BUILD_NAME=$JFROG_CLI_BUILD_NAME JFROG_CLI_BUILD_NUMBER=$JFROG_CLI_BUILD_NUMBER JFROG_CLI_BUILD_PROJECT=$JFROG_CLI_BUILD_PROJECT eval $MAVEN_CMD
+        fi
+
+        echo " "
+        echo "Storing incremented version in VERSION variable..."
+        VERSION=$(mvn help:evaluate -Dexpression=project.version -q -DforceStdout | tr -d '\r\n') #gets updated version value from the pom.xml
+        echo $VERSION
+
+        echo " "
+        echo "Exporting updated version as APP_VERSION key in $APP_VER.env file..."
+        echo "$APP_VER=$VERSION" > $APP_VER.env #updates version value into the original .env file
+        echo "Publish contents of $APP_VER.env file for verification..."
+        cat $APP_VER.env
