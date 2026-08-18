@@ -531,3 +531,25 @@ script: |
         echo "$APP_VER=$VERSION" > $APP_VER.env #updates version value into the original .env file
         echo "Publish contents of $APP_VER.env file for verification..."
         cat $APP_VER.env
+
+
+
+
+
+        echo " "
+        echo "--- DIAGNOSTICS: Verifying Variables ---"
+        echo "URL: $JFROG_CONFIG_URL"
+        echo "User: $JFROG_UPLOAD_USER"
+        echo "Token Length: ${#JFROG_UPLOAD_ACCESS_TOKEN} characters"
+        echo "----------------------------------------"
+
+        echo " "
+        echo "Creating Server ID eis2jf..."
+        # Note: I swapped the "=" for spaces on the parameters, as CLI v2.78.1 sometimes parses them better
+        jf config add eis2jf --url "$JFROG_CONFIG_URL" --user "$JFROG_UPLOAD_USER" --access-token "$JFROG_UPLOAD_ACCESS_TOKEN" --interactive=false --insecure-tls
+
+        echo " "
+        echo "Verifying if Server ID was actually saved..."
+        # This will force the pipeline to fail immediately here if the server wasn't saved, 
+        # rather than waiting for the Maven command to crash.
+        jf c show eis2jf || { echo "CRITICAL ERROR: The JFrog CLI completely failed to save the configuration."; exit 1; }
