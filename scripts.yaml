@@ -553,3 +553,35 @@ script: |
         # This will force the pipeline to fail immediately here if the server wasn't saved, 
         # rather than waiting for the Maven command to crash.
         jf c show eis2jf || { echo "CRITICAL ERROR: The JFrog CLI completely failed to save the configuration."; exit 1; }
+
+
+
+
+
+        # --- PASTE THIS IN ITS PLACE ---
+        echo " "
+        echo "Setting up JFrog Environment..."
+        export JFROG_CLI_HOME_DIR="$CI_PROJECT_DIR/.jfrog"
+        export JF_HOME="$CI_PROJECT_DIR/.jfrog"
+        export JFROG_CLI_LOG_LEVEL=DEBUG
+        export JFROG_CLI_AVOID_NEW_VERSION_WARNING=true
+        
+        # Globally accept the internal corporate certificates
+        export JFROG_CLI_INSECURE_TLS=true
+
+        echo " "
+        echo "Sanitizing variables to remove hidden Windows carriage returns..."
+        CLEAN_JFROG_URL=$(echo "$JFROG_CONFIG_URL" | tr -d '\r\n')
+        CLEAN_JFROG_USER=$(echo "$JFROG_UPLOAD_USER" | tr -d '\r\n')
+        CLEAN_JFROG_TOKEN=$(echo "$JFROG_UPLOAD_ACCESS_TOKEN" | tr -d '\r\n')
+
+        echo " "
+        echo "Bypassing CLI bug: Injecting server config directly into memory..."
+        # This officially supported method skips 'jf config add' entirely. 
+        # Notice we are appending a strict trailing slash to the URL to satisfy JFrog's validation.
+        export JF_ENV_1="serverId=eis2jf;url=${CLEAN_JFROG_URL}/;user=${CLEAN_JFROG_USER};accessToken=${CLEAN_JFROG_TOKEN}"
+
+        echo " "
+        echo "Verifying Server ID from memory..."
+        jf c show eis2jf || { echo "CRITICAL ERROR: JF_ENV_1 injection failed."; exit 1; }
+        # -------------------------------
