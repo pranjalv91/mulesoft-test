@@ -671,3 +671,42 @@ script: |
         # it pulls the extractor from your internal network instead of the public internet.
         export JFROG_CLI_RELEASES_REPO="eis2jf/eis2-maven-virtual"
         # -------------------------------
+
+
+
+
+        echo " "
+        echo "Setting up JFrog Environment..."
+        export JFROG_CLI_HOME_DIR="$CI_PROJECT_DIR/.jfrog"
+        export JF_HOME="$CI_PROJECT_DIR/.jfrog"
+        export JFROG_CLI_LOG_LEVEL=DEBUG
+        export JFROG_CLI_AVOID_NEW_VERSION_WARNING=true
+        export JFROG_CLI_INSECURE_TLS=true
+
+        echo " "
+        echo "Sanitizing variables..."
+        CLEAN_JFROG_URL=$(echo "$JFROG_CONFIG_URL" | tr -d '\r\n')
+        CLEAN_JFROG_USER=$(echo "$JFROG_UPLOAD_USER" | tr -d '\r\n')
+        CLEAN_JFROG_TOKEN=$(echo "$JFROG_UPLOAD_ACCESS_TOKEN" | tr -d '\r\n')
+
+        echo " "
+        echo "Bypassing broken CLI command with JF_ENV_1 memory injection..."
+        export JF_ENV_1="serverId=eis2jf;url=${CLEAN_JFROG_URL}/;user=${CLEAN_JFROG_USER};accessToken=${CLEAN_JFROG_TOKEN}"
+
+        echo " "
+        echo "Decoding and injecting the JFrog maven.yaml file..."
+        mkdir -p .jfrog/projects
+        echo "$JFROG_MAVEN_YAML_B64" | base64 -d | tr -d '\r' > .jfrog/projects/maven.yaml
+        
+        # Ensure the yaml correctly points to the server ID in memory
+        sed -i 's/eis2\.0_jf/eis2jf/g' .jfrog/projects/maven.yaml
+
+        echo " "
+        echo "Verify generated maven.yaml file contents..."
+        cat .jfrog/projects/maven.yaml
+
+        echo " "
+        echo "Setting Air-Gapped Extractor Path..."
+        # This explicitly tells the CLI to grab its tools from the in-memory server, bypassing the internet crash
+        export JFROG_CLI_RELEASES_REPO="eis2jf/eis2-maven-virtual"
+
