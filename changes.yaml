@@ -42,3 +42,37 @@
         echo "Setting Air-Gapped Extractor Path..."
         # 🟢 UPDATED: Updated the extractor path variable to use the newly corrected Server ID
         export JFROG_CLI_RELEASES_REPO="eis2jf/eis2-maven-virtual"
+
+
+
+
+        # --- NEW SECTION ---
+        echo " "
+        echo "Setting up JFrog Environment..."
+        export JFROG_CLI_HOME_DIR="$CI_PROJECT_DIR/.jfrog"
+        export JF_HOME="$CI_PROJECT_DIR/.jfrog"
+        export JFROG_CLI_LOG_LEVEL=DEBUG
+        export JFROG_CLI_AVOID_NEW_VERSION_WARNING=true
+        export JFROG_CLI_INSECURE_TLS=true
+
+        echo " "
+        echo "Sanitizing and exporting native JFrog credentials..."
+        # By exporting these specific JF_ variables natively, both the CLI 
+        # AND the Java Extractor will authenticate automatically without a config file.
+        export JF_URL=$(echo "$JFROG_CONFIG_URL" | tr -d '\r\n')
+        export JF_USER=$(echo "$JFROG_UPLOAD_USER" | tr -d '\r\n')
+        export JF_ACCESS_TOKEN=$(echo "$JFROG_UPLOAD_ACCESS_TOKEN" | tr -d '\r\n')
+
+        echo " "
+        echo "Decoding and injecting the JFrog maven.yaml file..."
+        mkdir -p .jfrog/projects
+        echo "$JFROG_MAVEN_YAML_B64" | base64 -d | tr -d '\r' > .jfrog/projects/maven.yaml
+        
+        # CRITICAL FIX: Delete the 'serverId' lines from maven.yaml. 
+        # Without a hardcoded server ID, jf mvn will automatically use the JF_ environment variables above.
+        sed -i '/serverId:/d' .jfrog/projects/maven.yaml
+
+        echo " "
+        echo "Verify generated maven.yaml file contents..."
+        cat .jfrog/projects/maven.yaml
+        # -------------------------------
