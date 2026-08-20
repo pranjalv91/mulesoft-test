@@ -626,3 +626,48 @@ script: |
         export JFROG_CLI_RELEASES_REPO="eis2-maven-virtual"
         # -------------------------------
 
+
+
+
+
+
+        # --- PASTE THIS IN ITS PLACE ---
+        echo " "
+        echo "Setting up JFrog Environment..."
+        export JFROG_CLI_HOME_DIR="$CI_PROJECT_DIR/.jfrog"
+        export JF_HOME="$CI_PROJECT_DIR/.jfrog"
+        export JFROG_CLI_LOG_LEVEL=DEBUG
+        export JFROG_CLI_AVOID_NEW_VERSION_WARNING=true
+        export JFROG_CLI_INSECURE_TLS=true
+
+        echo " "
+        echo "Sanitizing variables to remove hidden Windows carriage returns..."
+        # This is the magic step that prevents the CLI parser from choking on the variables
+        CLEAN_JFROG_URL=$(echo "$JFROG_CONFIG_URL" | tr -d '\r\n')
+        CLEAN_JFROG_USER=$(echo "$JFROG_UPLOAD_USER" | tr -d '\r\n')
+        CLEAN_JFROG_TOKEN=$(echo "$JFROG_UPLOAD_ACCESS_TOKEN" | tr -d '\r\n')
+
+        echo " "
+        echo "Creating Server ID eis2jf with sanitized credentials..."
+        # Using the clean variables, jf config add will finally work flawlessly
+        jf config add eis2jf --url "$CLEAN_JFROG_URL" --user "$CLEAN_JFROG_USER" --access-token "$CLEAN_JFROG_TOKEN" --interactive=false --insecure-tls
+
+        echo " "
+        echo "Decoding and injecting the JFrog maven.yaml file..."
+        mkdir -p .jfrog/projects
+        # This writes a fresh copy of the yaml file
+        echo "$JFROG_MAVEN_YAML_B64" | base64 -d | tr -d '\r' > .jfrog/projects/maven.yaml
+        
+        # We restore this sed command to ensure the yaml matches our new server ID
+        sed -i 's/eis2\.0_jf/eis2jf/g' .jfrog/projects/maven.yaml
+
+        echo " "
+        echo "Verify generated maven.yaml file contents..."
+        cat .jfrog/projects/maven.yaml
+
+        echo " "
+        echo "Setting Air-Gapped Extractor Path..."
+        # With the Server ID successfully created, we can safely export this again so 
+        # it pulls the extractor from your internal network instead of the public internet.
+        export JFROG_CLI_RELEASES_REPO="eis2jf/eis2-maven-virtual"
+        # -------------------------------
