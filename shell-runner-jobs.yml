@@ -975,3 +975,72 @@
         echo "kubectl get pods -n $NAMESPACE | grep $RELEASE_NAME"
         kubectl get pods -n $NAMESPACE | grep $RELEASE_NAME
         echo " "
+
+
+.jfrog_artifactory_upload_build_apps_hotfix:
+    rules:
+        - if: '( $CI_PIPELINE_SOURCE == "parent_pipeline" && $CI_COMMIT_REF_NAME =~ /^hotfix-/ ) || ( $CI_PIPELINE_SOURCE == "parent_pipeline" && $CI_COMMIT_BRANCH == "dev" )'
+          changes:
+            - "$APP_DIR/**"
+            - "$APP_DIR/**/*"
+    script: |
+        echo " "
+        echo "Sourcing latest release_info.env file..."
+        source release_info.env
+        echo "Release number is $RELEASE_NUMBER"
+
+        echo " "
+        echo "Clean the escape characters from RELEASE_NUMBER and exporting to CLEAN_RELEASE_NUMBER..."
+        CLEAN_RELEASE_NUMBER=$(echo "$RELEASE_NUMBER" | tr -d '\r\n')
+        echo "Clean release number is $CLEAN_RELEASE_NUMBER"
+
+        echo " "
+        # 🟢 UPDATED: Exporting the cleaned variable
+        echo "Exporting CLEAN_RELEASE_NUMBER to JFROG_CLI_BUILD_NUMBER..."
+        JFROG_CLI_BUILD_NUMBER="$CLEAN_RELEASE_NUMBER"
+
+        echo " "
+        echo "Printing values of release bundle related variables..."
+        echo "JFROG_CLI_BUILD_NAME=$JFROG_CLI_BUILD_NAME"
+        echo "JFROG_CLI_BUILD_NUMBER=$JFROG_CLI_BUILD_NUMBER"
+        echo "JFROG_CLI_BUILD_PROJECT=$JFROG_CLI_BUILD_PROJECT"
+ 
+        echo " "
+        echo "Printing values of variables passed from main job..."
+        echo "APP_NAME=$APP_NAME"
+        
+        # 🟢 UPDATED: POSIX-compliant eval to fix Docker /bin/sh "bad substitution"
+        APP_VERSION=$(eval echo "\$$APP_VER")
+        echo "APP_VERSION=$APP_VERSION"
+
+        if [[ "$CI_PIPELINE_SOURCE" == "parent_pipeline" && "$CI_COMMIT_REF_NAME" =~ ^hotfix- ]]; then
+          echo " "
+          echo "Source branch is hotfix. Creating ARTIFACTORY_PATH and BUILD_PATH by adding -hotfix suffix..."
+          ARTIFACTORY_PATH="${JFROG_RELEASE_ARTIFACTS_PATH}/${APP_NAME}/${APP_VERSION}-hotfix/"
+          BUILD_PATH="${BASE_M2_PATH}/${GROUP_ID}/${APP_NAME}/${APP_VERSION}-hotfix/*.jar"
+        else
+          echo " "
+          echo "Source branch is not hotfix. Creating ARTIFACTORY_PATH and BUILD_PATH without adding -hotfix suffix..."
+          ARTIFACTORY_PATH="${JFROG_RELEASE_ARTIFACTS_PATH}/${APP_NAME}/${APP_VERSION}/"
+          BUILD_PATH="${BASE_M2_PATH}/${GROUP_ID}/${APP_NAME}/${APP_VERSION}/*.jar"
+        fi
+
+        echo " "
+        echo "Printing values of ARTIFACTORY_PATH and BUILD_PATH..."
+        echo "ARTIFACTORY_PATH=$ARTIFACTORY_PATH"
+        echo "BUILD_PATH=$BUILD_PATH"
+
+        # 🟢 ADDED: Using the TESTED native variables for authentication
+        echo " "
+        echo "Setting up JFrog Environment & Authenticating..."
+        export JFROG_CLI_HOME_DIR="$CI_PROJECT_DIR/.jfrog"
+        export JFROG_CLI_INSECURE_TLS=true
+        
+        export JF_URL=$(echo "$JFROG_CONFIG_URL" | tr -d '\r\n')
+        export JF_USER=$(echo "$JFROG_UPLOAD_USER" | tr -d '\r\n')
+        export JF_ACCESS_TOKEN=$(echo "$JFROG_UPLOAD_ACCESS_TOKEN" | tr -d '\r\n')
+
+        echo " "
+        echo "Uploading artifacts for ${APP_NAME} to JFrog..."
+        JFROG_CLI_BUILD_NAME=$JFROG_CLI_BUILD_NAME JFROG_CLI_BUILD_NUMBER=$JFROG_CLI_BUILD_NUMBER JFROG_CLI_BUILD_PROJECT=$JFROG_CLI_BUILD_PROJECT jf rt u "$BUILD_PATH" "$ARTIFACTORY_PATH" --recursive=true --flat=true
+        echo " "
