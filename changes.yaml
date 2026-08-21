@@ -76,3 +76,22 @@
         echo "Verify generated maven.yaml file contents..."
         cat .jfrog/projects/maven.yaml
         # -------------------------------
+
+
+
+
+        # 🟢 ADDED: Clean the variables to prepare them for explicit flags
+        echo " "
+        echo "Setting up JFrog Environment & Authenticating..."
+        export JFROG_CLI_HOME_DIR="$CI_PROJECT_DIR/.jfrog"
+        export JFROG_CLI_INSECURE_TLS=true
+        
+        CLEAN_JFROG_URL=$(echo "$JFROG_CONFIG_URL" | tr -d '\r\n')
+        CLEAN_JFROG_USER=$(echo "$JFROG_UPLOAD_USER" | tr -d '\r\n')
+        CLEAN_JFROG_TOKEN=$(echo "$JFROG_UPLOAD_ACCESS_TOKEN" | tr -d '\r\n')
+
+        echo " "
+        echo "Uploading artifacts for ${APP_NAME} to JFrog..."
+        # 🟢 THE FIX: We explicitly feed the URL, User, and Token directly into the command using flags
+        JFROG_CLI_BUILD_NAME=$JFROG_CLI_BUILD_NAME JFROG_CLI_BUILD_NUMBER=$JFROG_CLI_BUILD_NUMBER JFROG_CLI_BUILD_PROJECT=$JFROG_CLI_BUILD_PROJECT jf rt u "$BUILD_PATH" "$ARTIFACTORY_PATH" --url="${CLEAN_JFROG_URL}/" --user="$CLEAN_JFROG_USER" --access-token="$CLEAN_JFROG_TOKEN" --recursive=true --flat=true
+        echo " "
