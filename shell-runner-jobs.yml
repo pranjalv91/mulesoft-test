@@ -1,0 +1,977 @@
+#This job is used by all internal and external journeys to lint pom for test coverage variable configuration
+.lint_pom_test_coverage:
+    #This rule implies that the job will only run when the pipeline is triggered due to code merge or if the code is committed to dev branch
+    rules:
+        - if: '$CI_PIPELINE_SOURCE == "parent_pipeline"'
+    script: |
+        # Define the exact GitLab log colors
+        GL_GREEN='\033[32;1m'
+        GL_RESET='\033[0m'
+
+        echo ""
+        echo -e "${GL_GREEN}$ echo \"Traversing into app directory...\"${GL_RESET}"
+        echo "Traversing into app directory..."
+        cd "$APP_DIR"
+        echo "Linting pom.xml for test coverage variable line..."
+        echo " "
+        
+        # tr -d ' \t\n\r' strips all spaces, tabs, newlines, and carriage returns 
+        # allowing grep to match the exact sequence regardless of formatting
+        if tr -d ' \t\n\r' < pom.xml | grep -Fq '<requiredApplicationCoverage>${munit.coverage.min}</requiredApplicationCoverage>'; then
+          echo "SUCCESS: Test coverage variable found in pom.xml for $APP_NAME"
+          echo "Proceeding to get_version_job for $APP_NAME"
+          echo " "
+        else
+          echo "FAILURE: Test coverage variable is missing from pom.xml for $APP_NAME"
+          echo " "
+          echo "Hardcoded value of 80 from below line needs to be replaced in pom.xml for $APP_NAME:"
+          echo "<requiredApplicationCoverage>80</requiredApplicationCoverage>"
+          echo " "
+          echo "Replace the hardcoded value with \"\${munit.coverage.min}\" for above line in pom.xml for $APP_NAME"
+          echo "Exiting the pipeline"
+          echo " "
+          exit 1
+        fi
+
+
+#This job is used by all internal and external journeys to get pom version
+.get_versions_modified:
+    #This rule implies that the job will only run when the pipeline is triggered due to code merge or if the code is commited to dev branch
+    rules:
+        - if: '$CI_PIPELINE_SOURCE == "parent_pipeline"'
+    script: |
+        cd "$APP_DIR"
+
+        echo "CI_PIPELINE_SOURCE: $CI_PIPELINE_SOURCE"
+        echo "CI_COMMIT_REF_NAME: $CI_COMMIT_REF_NAME"
+        echo "CI_COMMIT_BRANCH: $CI_COMMIT_BRANCH"
+        
+        # Run get_versions as usual for all merge request pipelines
+        if [[ "$CI_PIPELINE_SOURCE" == "parent_pipeline" && ("$CI_COMMIT_REF_NAME" =~ ^feature- || "$CI_COMMIT_REF_NAME" =~ ^hotfix- || "$CI_COMMIT_REF_NAME" =~ ^release- ) ]]; then
+          echo "Running get version for merge request pipeline"
+        fi
+        
+        if [[ "$CI_PIPELINE_SOURCE" == "parent_pipeline" && "$CI_COMMIT_BRANCH" == "dev" ]]; then
+          echo "Running get versions for CI_COMMIT_BRANCH 'dev'"
+        fi
+
+        if [[ "$CI_PIPELINE_SOURCE" == "parent_pipeline" && "$CI_COMMIT_BRANCH" == "main" ]]; then
+          echo "Running get versions for CI_COMMIT_BRANCH 'main'"
+        fi
+
+        # Common steps for all the if blocks
+        echo " "
+        echo "Get the version from pom.xml..."
+        VERSION=$(mvn help:evaluate -Dexpression=project.version -q -DforceStdout | tr -d '\r\n')
+        
+        echo " "
+        echo "Write VERSION value to $APP_VER.env..."
+        echo "$APP_VER=$VERSION" > $APP_VER.env
+        
+        echo " "
+        echo "View the contents of $APP_VER.env..."
+        cat $APP_VER.env
+    #saves the .env file as an artifact for the next job
+    artifacts:
+        paths:
+            - "$APP_DIR/$APP_VER.env"
+        reports:
+            dotenv: 
+                - "$APP_DIR/$APP_VER.env"
+
+
+.get_versions_hotfix:
+    #This rule implies that the job will only run when the pipeline is triggered due to code merge or if the code is commited to dev branch
+    rules:
+        - if: '$CI_PIPELINE_SOURCE == "parent_pipeline" && $CI_COMMIT_BRANCH == "main"'
+          changes:
+            - "$APP_DIR/**"
+            - "$APP_DIR/**/*"
+    script: |
+        cd "$APP_DIR"
+        
+        echo "Printng values of rules variables..."
+        echo "CI_PIPELINE_SOURCE: $CI_PIPELINE_SOURCE"
+        echo "CI_COMMIT_REF_NAME: $CI_COMMIT_REF_NAME"
+        echo "CI_COMMIT_BRANCH: $CI_COMMIT_BRANCH"
+        
+        echo " "
+        echo "Extracting source branch name..."
+        # Use git log to find the merge commit message details
+        MERGE_INFO=$(git log -1 --pretty=%B)
+          
+        # Extract the source branch name using regex/grep/sed (requires GNU grep with -P)
+        # This assumes GitLab default merge commit message format: 'Merge branch 'feature/branch-name' into 'main''
+        SOURCE_BRANCH_NAME=$(echo "$MERGE_INFO" | grep -oP "Merge branch '\K[^']+")
+          
+        echo "Successfully extracted source branch name: $SOURCE_BRANCH_NAME"
+          
+        if [[ "$SOURCE_BRANCH_NAME" == hotfix* ]]; then
+          echo " "
+          echo "Hotfix Merge Request detected ($SOURCE_BRANCH_NAME). Adding -hotfix suffix"
+            
+          echo " "
+          echo "Get the version from pom.xml and append hotfix suffix to the version..."
+          VERSION=$(mvn help:evaluate -Dexpression=project.version -q -DforceStdout | tr -d '\r\n')
+          HOTFIX_VERSION="${VERSION}-hotfix"
+          
+          echo " "
+          echo "Write HOTFIX_VERSION value to $APP_VER.env..."
+          echo "$APP_VER=$HOTFIX_VERSION" > $APP_VER.env
+          
+          echo " "
+          echo "View the contents of $APP_VER.env..."
+          cat $APP_VER.env
+        else
+          echo " "
+          echo "Source branch is $CI_COMMIT_REF_NAME and not hotfix. Skipping this job for $APP_NAME"
+        fi
+    #saves the .env file as an artifact for the next job
+    artifacts:
+        paths:
+            - "$APP_DIR/$APP_VER.env"
+        reports:
+            dotenv: 
+                - "$APP_DIR/$APP_VER.env"
+
+
+#This job is used by all internal and external journeys to get pom version
+.get_versions_final:
+    #This rule implies that the job will only run when the pipeline is triggered due to code merge or if the code is commited to dev branch
+    rules:
+        - if: '$CI_PIPELINE_SOURCE == "parent_pipeline"'
+    script: |
+        cd "$APP_DIR"
+
+        echo "CI_PIPELINE_SOURCE: $CI_PIPELINE_SOURCE"
+        echo "CI_COMMIT_REF_NAME: $CI_COMMIT_REF_NAME"
+        echo "CI_COMMIT_BRANCH: $CI_COMMIT_BRANCH"
+        
+        # Run get_versions as usual for all merge request pipelines
+        if [[ "$CI_PIPELINE_SOURCE" == "parent_pipeline" && ("$CI_COMMIT_REF_NAME" =~ ^feature- || "$CI_COMMIT_REF_NAME" =~ ^hotfix- || "$CI_COMMIT_REF_NAME" =~ ^release- ) ]]; then
+          echo "Running get version for merge request pipeline..."
+          echo " "
+          echo "Get the version from pom.xml..."
+          VERSION=$(mvn help:evaluate -Dexpression=project.version -q -DforceStdout | tr -d '\r\n')
+        
+          echo " "
+          echo "Write VERSION value to $APP_VER.env..."
+          echo "$APP_VER=$VERSION" > $APP_VER.env
+        
+          echo " "
+          echo "View the contents of $APP_VER.env..."
+          cat $APP_VER.env
+        fi
+        
+        if [[ "$CI_PIPELINE_SOURCE" == "parent_pipeline" && "$CI_COMMIT_BRANCH" == "dev" ]]; then
+          echo "Running get versions for CI_COMMIT_BRANCH 'dev'..."
+          echo " "
+          echo "Get the version from pom.xml..."
+          VERSION=$(mvn help:evaluate -Dexpression=project.version -q -DforceStdout | tr -d '\r\n')
+        
+          echo " "
+          echo "Write VERSION value to $APP_VER.env..."
+          echo "$APP_VER=$VERSION" > $APP_VER.env
+        
+          echo " "
+          echo "View the contents of $APP_VER.env..."
+          cat $APP_VER.env
+        fi
+
+        if [[ "$CI_PIPELINE_SOURCE" == "parent_pipeline" && "$CI_COMMIT_BRANCH" == "main" ]]; then
+          echo "Extracting source branch name..."
+          # Use git log to find the merge commit message details
+          MERGE_INFO=$(git log -1 --pretty=%B)
+          
+          # Extract the source branch name using regex/grep/sed (requires GNU grep with -P)
+          # This assumes GitLab default merge commit message format: 'Merge branch 'feature/branch-name' into 'main''
+          SOURCE_BRANCH_NAME=$(echo "$MERGE_INFO" | grep -oP "Merge branch '\K[^']+")
+          
+          echo "Successfully extracted source branch name: $SOURCE_BRANCH_NAME"
+          
+          if [[ "$SOURCE_BRANCH_NAME" == hotfix* ]]; then
+            echo " "
+            echo "Hotfix Merge Request detected ($SOURCE_BRANCH_NAME). Adding -hotfix suffix"
+            
+            echo " "
+            echo "Get the version from pom.xml and append hotfix suffix to the version..."
+            VERSION=$(mvn help:evaluate -Dexpression=project.version -q -DforceStdout | tr -d '\r\n')
+            HOTFIX_VERSION="${VERSION}-hotfix"
+          
+            echo " "
+            echo "Write HOTFIX_VERSION value to $APP_VER.env..."
+            echo "$APP_VER=$HOTFIX_VERSION" > $APP_VER.env
+          
+            echo " "
+            echo "View the contents of $APP_VER.env..."
+            cat $APP_VER.env
+          else
+            echo "Running get versions for CI_COMMIT_BRANCH 'main'..."
+            echo " "
+            echo "Get the version from pom.xml..."
+            VERSION=$(mvn help:evaluate -Dexpression=project.version -q -DforceStdout | tr -d '\r\n')
+        
+            echo " "
+            echo "Write VERSION value to $APP_VER.env..."
+            echo "$APP_VER=$VERSION" > $APP_VER.env
+        
+            echo " "
+            echo "View the contents of $APP_VER.env..."
+            cat $APP_VER.env
+          fi
+        fi
+    #saves the .env file as an artifact for the next job
+    artifacts:
+        paths:
+            - "$APP_DIR/$APP_VER.env"
+        reports:
+            dotenv: 
+                - "$APP_DIR/$APP_VER.env"
+
+
+#This job is used by all internal and external journeys to get release version
+.release_version_increment_hotfix:
+    #This rule implies that the job will only run when the pipeline is triggered due to code merge or if the code is commited to dev branch
+    rules:
+        - if: '$CI_PIPELINE_SOURCE == "parent_pipeline"'
+    script: |
+        cd $CI_PROJECT_DIR
+        
+        echo "Sourcing latest release_info.env file..."
+        source release_info.env
+        echo "Release number is $RELEASE_NUMBER"
+
+        echo " "
+        echo "Clean the escape characters from RELEASE_NUMBER and exporting to CLEAN_RELEASE_NUMBER..."
+        CLEAN_RELEASE_NUMBER=$(echo "$RELEASE_NUMBER" | tr -d '\r\n')
+        echo "Clean release number is $CLEAN_RELEASE_NUMBER"
+        
+        echo " "
+        echo "Printng values of rules variables..."
+        echo "CI_PIPELINE_SOURCE: $CI_PIPELINE_SOURCE"
+        echo "CI_COMMIT_REF_NAME: $CI_COMMIT_REF_NAME"
+        echo "CI_COMMIT_BRANCH: $CI_COMMIT_BRANCH"
+        echo " "
+
+        if [[ "$CI_PIPELINE_SOURCE" == "parent_pipeline" && "$CI_COMMIT_REF_NAME" =~ ^feature- ]]; then
+          echo "Parse the version number..."
+          MAJOR=$(echo $CLEAN_RELEASE_NUMBER | awk -F'.' '{print $1}')
+          MINOR=$(echo $CLEAN_RELEASE_NUMBER | awk -F'.' '{print $2}')
+          PATCH=$(echo $CLEAN_RELEASE_NUMBER | awk -F'.' '{print $3}')
+
+          echo " "
+          echo "Increment the patch version..."
+          PATCH=$((PATCH + 1))
+
+          echo " "
+          echo "Form the incremented version string..."
+          NEW_VERSION="$MAJOR.$MINOR.$PATCH"
+          echo "New version is: $NEW_VERSION"
+
+          echo " "
+          echo "Write the updated release version string back into release_info.env file on $CI_PROJECT_DIR..."
+          echo "RELEASE_NUMBER=$NEW_VERSION" > release_info.env #updates version value into the original .env file
+
+          echo " "
+          echo "Echo the contents of release_info.env for verification..."
+          cat release_info.env
+        fi
+
+        if [[ "$CI_PIPELINE_SOURCE" == "parent_pipeline" && "$CI_COMMIT_BRANCH" == "dev" ]]; then
+          echo "Parse the version number..."
+          MAJOR=$(echo $CLEAN_RELEASE_NUMBER | awk -F'.' '{print $1}')
+          MINOR=$(echo $CLEAN_RELEASE_NUMBER | awk -F'.' '{print $2}')
+          PATCH=$(echo $CLEAN_RELEASE_NUMBER | awk -F'.' '{print $3}')
+
+          echo " "
+          echo "Increment the patch version..."
+          PATCH=$((PATCH + 1))
+
+          echo " "
+          echo "Form the incremented version string..."
+          NEW_VERSION="$MAJOR.$MINOR.$PATCH"
+          echo "New version is: $NEW_VERSION"
+
+          echo " "
+          echo "Write the updated release version string back into release_info.env file on $CI_PROJECT_DIR..."
+          echo "RELEASE_NUMBER=$NEW_VERSION" > release_info.env #updates version value into the original .env file
+
+          echo " "
+          echo "Echo the contents of release_info.env for verification..."
+          cat release_info.env
+        fi
+
+        if [[ "$CI_PIPELINE_SOURCE" == "parent_pipeline" && "$CI_COMMIT_REF_NAME" =~ ^hotfix- ]]; then
+          echo "Hotfix Merge Request detected. Adding -hotfix suffix"
+            
+          echo " "
+          echo "Get the release version from release_info.env and append hotfix suffix to the version..."
+          HOTFIX_VERSION="${CLEAN_RELEASE_NUMBER}-hotfix"
+          echo "HOTFIX_RELEASE_VERSION=$HOTFIX_VERSION"
+          
+          echo " "
+          echo "Write HOTFIX_VERSION value into release_info.env file on $CI_PROJECT_DIR..."
+          echo "RELEASE_NUMBER=$HOTFIX_VERSION" > release_info.env
+          
+          echo " "
+          echo "Echo the contents of release_info.env for verification..."
+          cat release_info.env
+        fi
+        
+        if [[ "$CI_PIPELINE_SOURCE" == "parent_pipeline" && "$CI_COMMIT_BRANCH" == "main" ]]; then
+          echo "Use git log to find the merge commit message details..."
+          MERGE_INFO=$(git log -1 --pretty=%B)
+          
+          echo " "
+          echo "Extract the source branch name using regex/grep/sed (requires GNU grep with -P)..."
+          # This assumes GitLab default merge commit message format: 'Merge branch 'feature/branch-name' into 'main''
+          SOURCE_BRANCH_NAME=$(echo "$MERGE_INFO" | grep -oP "Merge branch '\K[^']+")
+          
+          echo "Successfully extracted source branch name: $SOURCE_BRANCH_NAME"
+
+          if [[ "$SOURCE_BRANCH_NAME" == hotfix* ]]; then
+            echo "Hotfix Merge Request detected ($SOURCE_BRANCH_NAME). Adding -hotfix suffix"
+            
+            # Get the release version from release_info.env and append hotfix suffix to the version
+
+            HOTFIX_VERSION="${CLEAN_RELEASE_NUMBER}-hotfix"
+            echo "HOTFIX_RELEASE_VERSION=$HOTFIX_VERSION"
+            
+            # Write HOTFIX_VERSION value into release_info.env file on $CI_PROJECT_DIR
+            echo "RELEASE_NUMBER=$HOTFIX_VERSION" > release_info.env
+          
+            # Echo the contents of release_info.env for verification
+            echo " "
+            echo "Echo the contents of release_info.env for verification..."
+            cat release_info.env
+          else
+            echo " "
+            echo "Source branch is $CI_COMMIT_REF_NAME and not hotfix.."
+            echo "Uplaoding the same release number in .dotenv file"
+          fi
+        fi
+    #saves the .env file as an artifact for the next job
+    artifacts:
+        paths:
+            - "$CI_PROJECT_DIR/release_info.env"
+        reports: 
+            dotenv: 
+                - "$CI_PROJECT_DIR/release_info.env"
+
+
+.build_appchange_noupload_hotfix:
+    #This rule implies that the job will only run when the pipeline is triggered due to code merge or if the code is commited to dev branch and if the changes are inside the app directory
+    rules:
+        - if: '( $CI_PIPELINE_SOURCE == "parent_pipeline" && $CI_COMMIT_REF_NAME =~ /^feature-/ ) || ( $CI_PIPELINE_SOURCE == "parent_pipeline" && $CI_COMMIT_REF_NAME =~ /^hotfix-/ ) || ( $CI_PIPELINE_SOURCE == "parent_pipeline" && $CI_COMMIT_BRANCH == "dev" )'
+          changes:
+            - "$APP_DIR/**"
+            - "$APP_DIR/**/*"
+    script: |
+        echo "Sourcing latest release_info.env file..."
+        source release_info.env
+        echo "Release number is $RELEASE_NUMBER"
+
+        echo " "
+        echo "Clean the escape characters from RELEASE_NUMBER and exporting to CLEAN_RELEASE_NUMBER..."
+        CLEAN_RELEASE_NUMBER=$(echo "$RELEASE_NUMBER" | tr -d '\r\n')
+        echo "Clean release number is $CLEAN_RELEASE_NUMBER"
+
+        echo " "
+        echo "Exporting CLEAN_RELEASE_NUMBER to JFROG_CLI_BUILD_NUMBER..."
+        JFROG_CLI_BUILD_NUMBER="$CLEAN_RELEASE_NUMBER"
+
+        echo " "
+        echo "Printing values of release bundle related variables..."
+        echo "JFROG_CLI_BUILD_NAME=$JFROG_CLI_BUILD_NAME"
+        echo "JFROG_CLI_BUILD_NUMBER=$JFROG_CLI_BUILD_NUMBER"
+        echo "JFROG_CLI_BUILD_PROJECT=$JFROG_CLI_BUILD_PROJECT"
+        echo "APP_NAME=$APP_NAME"
+        echo "APP_VERSION=${!APP_VER}"
+ 
+        echo " "
+        echo "Traversing into ${APP_DIR} directory..."
+        cd "$APP_DIR"
+
+        echo " "
+        echo "Exporting Jfrog log level as DEBUG for detailed logs..."
+        export JFROG_CLI_LOG_LEVEL=DEBUG
+        echo " "
+
+        # If merge request source branch is hotfix then skip the incrementing pom version
+        if [[ "$CI_PIPELINE_SOURCE" == "parent_pipeline" && "$CI_COMMIT_REF_NAME" =~ ^hotfix- ]]; then
+          echo "MERGE REQUEST SOURCE BRANCH is hotfix, skipping incrementing pom version ..."
+
+          echo " "
+          echo "APP CHANGE - Starting maven build for ${APP_NAME}..."
+          JFROG_CLI_BUILD_NAME=$JFROG_CLI_BUILD_NAME JFROG_CLI_BUILD_NUMBER=$JFROG_CLI_BUILD_NUMBER JFROG_CLI_BUILD_PROJECT=$JFROG_CLI_BUILD_PROJECT jf mvn clean install -U -DskipTests -Dmaven.repo.local=/gitrunner_data/.m2/repository -Dartifactory.publish.artifacts=false
+
+          echo " "
+          echo "Copying JAR from build path to hotfix path with -hotfix- string appended to JAR file name..."
+          SOURCE_INSTALL_PATH="${BASE_M2_PATH}/${GROUP_ID}/${APP_NAME}/${!APP_VER}"
+          DESTINATION_HOTFIX_PATH="${BASE_M2_PATH}/${GROUP_ID}/${APP_NAME}/${!APP_VER}-hotfix"
+
+          echo " "
+          echo "Print SOURCE_PATH and DESTINATION PATH before copying hotfix JAR..."
+          echo "SOURCE_INSTALL_PATH=$SOURCE_INSTALL_PATH"
+          echo "DESTINATION_HOTFIX_PATH=$DESTINATION_HOTFIX_PATH"
+
+          echo " "
+          echo "Copy JAR from SOURCE_INSTALL_PATH to DESTINATION_HOTFIX_PATH..."
+          mkdir -p "${DESTINATION_HOTFIX_PATH}" && cp "${SOURCE_INSTALL_PATH}/${APP_NAME}-${!APP_VER}-mule-application.jar" "${DESTINATION_HOTFIX_PATH}/${APP_NAME}-${!APP_VER}-hotfix-mule-application.jar"
+
+          echo " "
+          echo "Verify JAR under hotfix folder path after copying..."
+          ls -lhrt "${DESTINATION_HOTFIX_PATH}"
+        else
+          echo "MERGE REQUEST SOURCE BRANCH is not hotfix, incrementing pom version ..."
+          mvn -q build-helper:parse-version versions:set -DnewVersion=\${parsedVersion.majorVersion}.\${parsedVersion.minorVersion}.\${parsedVersion.nextIncrementalVersion} versions:commit  #increments the pom patch version by 1
+
+          echo " "
+          echo "APP CHANGE - Starting maven build for ${APP_NAME}..."
+          JFROG_CLI_BUILD_NAME=$JFROG_CLI_BUILD_NAME JFROG_CLI_BUILD_NUMBER=$JFROG_CLI_BUILD_NUMBER JFROG_CLI_BUILD_PROJECT=$JFROG_CLI_BUILD_PROJECT jf mvn clean install -U -DskipTests -Dmaven.repo.local=/gitrunner_data/.m2/repository -Dartifactory.publish.artifacts=false
+        fi
+
+        echo " "
+        echo "Storing incremented version in VERSION variable..."
+        VERSION=$(mvn help:evaluate -Dexpression=project.version -q -DforceStdout | tr -d '\r\n') #gets updated version value from the pom.xml
+        echo $VERSION
+
+        echo " "
+        echo "Exporting updated version as APP_VERSION key in $APP_VER.env file..."
+        echo "$APP_VER=$VERSION" > $APP_VER.env #updates version value into the original .env file
+        echo "Publish contents of $APP_VER.env file for verification..."
+        cat $APP_VER.env
+
+    #saves the .env file as an artifact for the next job
+    artifacts:
+        paths:
+            - "$APP_DIR/pom.xml"
+            - "$APP_DIR/$APP_VER.env"
+        reports:
+            dotenv:
+                - "$APP_DIR/$APP_VER.env"
+
+
+#This job is used by all internal and external journeys to build the jar when there is no change in app directory
+.build_noappchange_noupload_hotfix:
+    #This rule implies that the job will only run when the pipeline is triggered due to code merge or if the code is commited to dev branch and if the changes are inside the app directory
+    rules:
+        - if: '( $CI_PIPELINE_SOURCE == "parent_pipeline" && $CI_COMMIT_REF_NAME =~ /^hotfix-/ ) || ( $CI_PIPELINE_SOURCE == "parent_pipeline" && $CI_COMMIT_BRANCH == "dev" )'
+          changes:
+            - "$APP_DIR/**"
+            - "$APP_DIR/**/*"
+          when: never
+        - if: '( $CI_PIPELINE_SOURCE == "parent_pipeline" && $CI_COMMIT_REF_NAME =~ /^hotfix-/ ) || ( $CI_PIPELINE_SOURCE == "parent_pipeline" && $CI_COMMIT_BRANCH == "dev" )'
+          when: on_success
+    script: |
+        echo " "
+        echo "Sourcing latest release_info.env file..."
+        source release_info.env
+        echo "Release number is $RELEASE_NUMBER"
+
+        echo " "
+        echo "Clean the escape characters from RELEASE_NUMBER and exporting to CLEAN_RELEASE_NUMBER..."
+        CLEAN_RELEASE_NUMBER=$(echo "$RELEASE_NUMBER" | tr -d '\r\n')
+        echo "Clean release number is $CLEAN_RELEASE_NUMBER"
+
+        echo " "
+        echo "Exporting CLEAN_RELEASE_NUMBER to JFROG_CLI_BUILD_NUMBER..."
+        JFROG_CLI_BUILD_NUMBER="$CLEAN_RELEASE_NUMBER"
+
+        echo " "
+        echo "Printing values of release bundle related variables..."
+        echo "JFROG_CLI_BUILD_NAME=$JFROG_CLI_BUILD_NAME"
+        echo "JFROG_CLI_BUILD_NUMBER=$JFROG_CLI_BUILD_NUMBER"
+        echo "JFROG_CLI_BUILD_PROJECT=$JFROG_CLI_BUILD_PROJECT"
+        echo "APP_NAME=$APP_NAME"
+        echo "APP_VERSION=${!APP_VER}"
+ 
+        echo " "
+        echo "Traversing into ${APP_DIR} directory..."
+        cd "$APP_DIR"
+
+        echo " "
+        echo "Exporting Jfrog log level as DEBUG for detailed logs..."
+        export JFROG_CLI_LOG_LEVEL=DEBUG
+        echo " "
+
+        echo "NO APP CHANGE - Starting maven build for ${APP_NAME}..."
+        mvn -q build-helper:parse-version versions:set -DnewVersion=\${parsedVersion.majorVersion}.\${parsedVersion.minorVersion}.\${parsedVersion.incrementalVersion} versions:commit
+        JFROG_CLI_BUILD_NAME=$JFROG_CLI_BUILD_NAME JFROG_CLI_BUILD_NUMBER=$JFROG_CLI_BUILD_NUMBER JFROG_CLI_BUILD_PROJECT=$JFROG_CLI_BUILD_PROJECT jf mvn clean install -U -DskipTests -Dmaven.repo.local=/gitrunner_data/.m2/repository -Dartifactory.publish.artifacts=false
+
+        echo " "
+        echo "Storing version in VERSION variable..."
+        VERSION=$(mvn help:evaluate -Dexpression=project.version -q -DforceStdout | tr -d '\r\n') #gets updated version value from the pom.xml
+        echo $VERSION
+
+        echo " "
+        echo "Exporting updated version as APP_VERSION key in $APP_VER.env file..."
+        echo "$APP_VER=$VERSION" > $APP_VER.env #updates version value into the original .env file
+        echo "Publish contents of $APP_VER.env file for verification..."
+        cat $APP_VER.env
+
+    #saves the .env file as an artifact for the next job
+    artifacts:
+        paths:
+            - "$APP_DIR/pom.xml"
+            - "$APP_DIR/$APP_VER.env"
+        reports:
+            dotenv:
+                - "$APP_DIR/$APP_VER.env"
+
+
+#This job is used by all internal and external journeys to run munit test cases
+.mvn_test_job:
+    #This rule implies that the job will only run when the pipeline is triggered due to code merge or if the code is commited to dev branch and if the changes are inside the app directory
+    rules:
+        - if: '( $CI_PIPELINE_SOURCE == "parent_pipeline" && $CI_COMMIT_REF_NAME =~ /^feature-/ ) || ( $CI_PIPELINE_SOURCE == "parent_pipeline" && $CI_COMMIT_REF_NAME =~ /^hotfix-/ ) || ( $CI_PIPELINE_SOURCE == "parent_pipeline" && $CI_COMMIT_BRANCH == "dev" )'
+          changes:
+            - "$APP_DIR/**"
+            - "$APP_DIR/**/*"
+    script:
+        - cd "$APP_DIR" && mvn clean test -U -Dencryption.key=$ENCRYPTION_KEY -Denv=$MULEENV -DmuleKeyStorePassword=$MULE_KEYSTORE_PASSWORD -DmuleTrustStorePassword=$MULE_TRUSTSTORE_PASSWORD -DmuleKeyStoreAlias=$MULE_KEYSTORE_ALIAS -Dmunit.coverage.min=90
+
+
+#This job is used by all internal and external journeys to run a remote fortify scan
+.fortify_remote_job:
+    #This rule implies that the job will only run when the pipeline is triggered due to code merge or if the code is commited to dev branch and if the changes are inside the app directory
+    rules:
+        - if: '( $CI_PIPELINE_SOURCE == "parent_pipeline" && $CI_COMMIT_REF_NAME =~ /^feature-/ ) || ( $CI_PIPELINE_SOURCE == "parent_pipeline" && $CI_COMMIT_REF_NAME =~ /^hotfix-/ ) || ( $CI_PIPELINE_SOURCE == "parent_pipeline" && $CI_COMMIT_BRANCH == "dev" )'
+          changes:
+            - "$APP_DIR/**"
+            - "$APP_DIR/**/*"
+    script: 
+        - cd "$APP_DIR"
+        - $FORTIFY_PATH -url "$FORTIFY_CONTROLLER" start -upload -versionid $APP_ID -uptoken "$FORTIFY_TOKEN" -bt "mvn" -pool "00000000-0000-0000-0000-000000000002" #packages the source code along with the fortify configurations and uploads to fortify controller. scan and report generation happens remotely
+    allow_failure: true
+
+
+.xray_hotfix_job:
+    #This rule implies that the job will only run when the pipeline is triggered due to code merge or if the code is commited to dev branch and if the changes are inside the app directory
+    rules:
+        - if: '( $CI_PIPELINE_SOURCE == "parent_pipeline" && $CI_COMMIT_REF_NAME =~ /^feature-/ ) || ( $CI_PIPELINE_SOURCE == "parent_pipeline" && $CI_COMMIT_REF_NAME =~ /^hotfix-/ ) || ( $CI_PIPELINE_SOURCE == "parent_pipeline" && $CI_COMMIT_BRANCH == "dev" )'
+          changes:
+            - "$APP_DIR/**"
+            - "$APP_DIR/**/*"
+    script: |
+        echo "Printing values of Xray Scan Variables..."
+        echo "BASE_M2_PATH=$BASE_M2_PATH"
+        echo "GROUP_ID=$GROUP_ID"
+        echo "APP_NAME=$APP_NAME"
+        echo "APP_VERSION=${!APP_VER}"
+        
+        echo " "
+        echo "Constructing the build path..."
+        BUILD_PATH="${BASE_M2_PATH}/${GROUP_ID}/${APP_NAME}/${!APP_VER}/*.jar"
+        
+        echo " "
+        echo "Running xray scan locally on the runner..."
+        jf scan $BUILD_PATH --watches=EIS2.0 --fail=true #scans the artifact=$BUILD_PATH using the policy defined in watches=EIS2.0. fails the pipeline if the scan returns not 0
+        echo " "
+
+
+.jfrog_artifactory_upload_build_apps_hotfix:
+    #This rule implies that the job will only run when the pipeline is triggered due to code merge or if the code is commited to dev branch and if the changes are inside the app directory
+    rules:
+        - if: '( $CI_PIPELINE_SOURCE == "parent_pipeline" && $CI_COMMIT_REF_NAME =~ /^hotfix-/ ) || ( $CI_PIPELINE_SOURCE == "parent_pipeline" && $CI_COMMIT_BRANCH == "dev" )'
+          changes:
+            - "$APP_DIR/**"
+            - "$APP_DIR/**/*"
+    script: |
+        echo " "
+        echo "Sourcing latest release_info.env file..."
+        source release_info.env
+        echo "Release number is $RELEASE_NUMBER"
+
+        echo " "
+        echo "Clean the escape characters from RELEASE_NUMBER and exporting to CLEAN_RELEASE_NUMBER..."
+        CLEAN_RELEASE_NUMBER=$(echo "$RELEASE_NUMBER" | tr -d '\r\n')
+        echo "Clean release number is $CLEAN_RELEASE_NUMBER"
+
+        echo " "
+        echo "Exporting CLEAN_RELEASE_NUMBER to JFROG_CLI_BUILD_NUMBER..."
+        JFROG_CLI_BUILD_NUMBER="$RELEASE_NUMBER"
+
+        echo " "
+        echo "Printing values of release bundle related variables..."
+        echo "JFROG_CLI_BUILD_NAME=$JFROG_CLI_BUILD_NAME"
+        echo "JFROG_CLI_BUILD_NUMBER=$JFROG_CLI_BUILD_NUMBER"
+        echo "JFROG_CLI_BUILD_PROJECT=$JFROG_CLI_BUILD_PROJECT"
+ 
+        echo " "
+        echo "Printing values of variables passed from main job..."
+        echo "APP_NAME=$APP_NAME"
+        echo "APP_VERSION=${!APP_VER}"
+
+        if [[ "$CI_PIPELINE_SOURCE" == "parent_pipeline" && "$CI_COMMIT_REF_NAME" =~ ^hotfix- ]]; then
+          echo " "
+          echo "Source branch is hotfix. Creating ARTIFACTORY_PATH and BUILD_PATH by adding -hotfix suffix..."
+          ARTIFACTORY_PATH="${JFROG_RELEASE_ARTIFACTS_PATH}/${APP_NAME}/${!APP_VER}-hotfix/"
+          BUILD_PATH="${BASE_M2_PATH}/${GROUP_ID}/${APP_NAME}/${!APP_VER}-hotfix/*.jar"
+
+          echo " "
+          echo "Printing values of ARTIFACTORY_PATH and BUILD_PATH..."
+          echo "ARTIFACTORY_PATH=$ARTIFACTORY_PATH"
+          echo "BUILD_PATH=$BUILD_PATH"
+        else
+          echo " "
+          echo "Source branch is not hotfix. Creating ARTIFACTORY_PATH and BUILD_PATH without adding -hotfix suffix..."
+          ARTIFACTORY_PATH="${JFROG_RELEASE_ARTIFACTS_PATH}/${APP_NAME}/${!APP_VER}/"
+          BUILD_PATH="${BASE_M2_PATH}/${GROUP_ID}/${APP_NAME}/${!APP_VER}/*.jar"
+
+          echo " "
+          echo "Printing values of ARTIFACTORY_PATH and BUILD_PATH..."
+          echo "ARTIFACTORY_PATH=$ARTIFACTORY_PATH"
+          echo "BUILD_PATH=$BUILD_PATH"
+        fi
+
+        echo " "
+        echo "Uploading artifacts for ${APP_NAME} to JFrog..."
+        JFROG_CLI_BUILD_NAME=$JFROG_CLI_BUILD_NAME JFROG_CLI_BUILD_NUMBER=$JFROG_CLI_BUILD_NUMBER JFROG_CLI_BUILD_PROJECT=$JFROG_CLI_BUILD_PROJECT jf rt u "$BUILD_PATH" "$ARTIFACTORY_PATH" --recursive=true --flat=true
+        echo " "
+
+
+.jfrog_artifactory_upload_release_bundle_apps_hotfix:
+    rules:
+        - if: '( $CI_PIPELINE_SOURCE == "parent_pipeline" && $CI_COMMIT_REF_NAME =~ /^hotfix-/ ) || ( $CI_PIPELINE_SOURCE == "parent_pipeline" && $CI_COMMIT_BRANCH == "dev" )'
+          changes:
+            - "$APP_DIR/**"
+            - "$APP_DIR/**/*"
+          when: never
+        - if: '( $CI_PIPELINE_SOURCE == "parent_pipeline" && $CI_COMMIT_REF_NAME =~ /^hotfix-/ ) || ( $CI_PIPELINE_SOURCE == "parent_pipeline" && $CI_COMMIT_BRANCH == "dev" )'
+          when: on_success
+    script: |
+        echo " "
+        echo "Sourcing latest release_info.env file..."
+        source release_info.env
+        echo "Release number is $RELEASE_NUMBER"
+
+        echo " "
+        echo "Clean the escape characters from RELEASE_NUMBER and exporting to CLEAN_RELEASE_NUMBER..."
+        CLEAN_RELEASE_NUMBER=$(echo "$RELEASE_NUMBER" | tr -d '\r\n')
+        echo "Clean release number is $CLEAN_RELEASE_NUMBER"
+
+        echo " "
+        echo "Exporting CLEAN_RELEASE_NUMBER to JFROG_CLI_BUILD_NUMBER..."
+        JFROG_CLI_BUILD_NUMBER="$CLEAN_RELEASE_NUMBER"
+
+        echo " "
+        echo "Printing values of release bundle related variables..."
+        echo "JFROG_CLI_BUILD_NAME=$JFROG_CLI_BUILD_NAME"
+        echo "JFROG_CLI_BUILD_NUMBER=$JFROG_CLI_BUILD_NUMBER"
+        echo "JFROG_CLI_BUILD_PROJECT=$JFROG_CLI_BUILD_PROJECT"
+ 
+        echo " "
+        echo "Printing values of variables passed from main job..."
+        echo "APP_NAME=$APP_NAME"
+        echo "APP_VERSION=${!APP_VER}"
+
+        echo " "
+        echo "Creating values for ARTIFACTORY_PATH and BUILD_PATH..."
+        ARTIFACTORY_PATH="${JFROG_RELEASE_ARTIFACTS_PATH}/${APP_NAME}/${!APP_VER}/"
+        BUILD_PATH="${BASE_M2_PATH}/${GROUP_ID}/${APP_NAME}/${!APP_VER}/*.jar"
+
+        echo " "
+        echo "Printing values of ARTIFACTORY_PATH and BUILD_PATH..."
+        echo "ARTIFACTORY_PATH=$ARTIFACTORY_PATH"
+        echo "BUILD_PATH=$BUILD_PATH"
+
+        echo " "
+        echo "Uploading artifacts for ${APP_NAME} to JFrog..."
+        JFROG_CLI_BUILD_NAME=$JFROG_CLI_BUILD_NAME JFROG_CLI_BUILD_NUMBER=$JFROG_CLI_BUILD_NUMBER JFROG_CLI_BUILD_PROJECT=$JFROG_CLI_BUILD_PROJECT jf rt u "$BUILD_PATH" "$ARTIFACTORY_PATH" --recursive=true --flat=true
+        echo " "
+
+
+.buildinfo_publish_hotfix:
+    rules:
+        - if: '( $CI_PIPELINE_SOURCE == "parent_pipeline" && $CI_COMMIT_REF_NAME =~ /^hotfix-/ ) || ( $CI_PIPELINE_SOURCE == "parent_pipeline" && $CI_COMMIT_BRANCH == "dev" ) || ( $CI_PIPELINE_SOURCE == "parent_pipeline" && $CI_COMMIT_BRANCH == "main" )'
+    script: |
+        if [[ "$CI_PIPELINE_SOURCE" == "parent_pipeline" && "$CI_COMMIT_REF_NAME" =~ ^hotfix- ]]; then
+          echo "Publishing buildinfo for $CI_COMMIT_REF_NAME branch..."
+          
+          echo " "
+          echo "Sourcing latest release_info.env file..."
+          source release_info.env
+          echo "Release number is $RELEASE_NUMBER"
+
+          echo " "
+          echo "Clean the escape characters from RELEASE_NUMBER and exporting to CLEAN_RELEASE_NUMBER..."
+          CLEAN_RELEASE_NUMBER=$(echo "$RELEASE_NUMBER" | tr -d '\r\n')
+          echo "Clean release number is $CLEAN_RELEASE_NUMBER"
+
+          echo " "
+          echo "Exporting CLEAN_RELEASE_NUMBER to JFROG_CLI_BUILD_NUMBER..."
+          JFROG_CLI_BUILD_NUMBER="$CLEAN_RELEASE_NUMBER"
+
+          echo " "
+          echo "Printing values of release bundle related variables..."
+          echo "JFROG_CLI_BUILD_NAME=$JFROG_CLI_BUILD_NAME"
+          echo "JFROG_CLI_BUILD_NUMBER=$JFROG_CLI_BUILD_NUMBER"
+          echo "JFROG_CLI_BUILD_PROJECT=$JFROG_CLI_BUILD_PROJECT"
+ 
+          echo " "
+          echo "Running buildinfo publish commands needed for release bundle creation..."
+          jf rt bce "$JFROG_CLI_BUILD_NAME" "$JFROG_CLI_BUILD_NUMBER" --project="$JFROG_CLI_BUILD_PROJECT"
+          jf rt bag "$JFROG_CLI_BUILD_NAME" "$JFROG_CLI_BUILD_NUMBER" --project="$JFROG_CLI_BUILD_PROJECT"
+          jf rt bp "$JFROG_CLI_BUILD_NAME" "$JFROG_CLI_BUILD_NUMBER" --project="$JFROG_CLI_BUILD_PROJECT"
+          echo " "
+        fi
+        
+        if [[ "$CI_PIPELINE_SOURCE" == "parent_pipeline" && "$CI_COMMIT_BRANCH" == "dev" ]]; then
+          echo "Publishing buildinfo for $CI_COMMIT_REF_NAME branch..."
+          
+          echo " "
+          echo "Sourcing latest release_info.env file..."
+          source release_info.env
+          echo "Release number is $RELEASE_NUMBER"
+
+          echo " "
+          echo "Clean the escape characters from RELEASE_NUMBER and exporting to CLEAN_RELEASE_NUMBER..."
+          CLEAN_RELEASE_NUMBER=$(echo "$RELEASE_NUMBER" | tr -d '\r\n')
+          echo "Clean release number is $CLEAN_RELEASE_NUMBER"
+
+          echo " "
+          echo "Exporting RELEASE_NUMBER to JFROG_CLI_BUILD_NUMBER..."
+          JFROG_CLI_BUILD_NUMBER="$RELEASE_NUMBER"
+
+          echo " "
+          echo "Printing values of release bundle related variables..."
+          echo "JFROG_CLI_BUILD_NAME=$JFROG_CLI_BUILD_NAME"
+          echo "JFROG_CLI_BUILD_NUMBER=$JFROG_CLI_BUILD_NUMBER"
+          echo "JFROG_CLI_BUILD_PROJECT=$JFROG_CLI_BUILD_PROJECT"
+ 
+          echo " "
+          echo "Running buildinfo publish commands needed for release bundle creation..."
+          jf rt bce "$JFROG_CLI_BUILD_NAME" "$JFROG_CLI_BUILD_NUMBER" --project="$JFROG_CLI_BUILD_PROJECT"
+          jf rt bag "$JFROG_CLI_BUILD_NAME" "$JFROG_CLI_BUILD_NUMBER" --project="$JFROG_CLI_BUILD_PROJECT"
+          jf rt bp "$JFROG_CLI_BUILD_NAME" "$JFROG_CLI_BUILD_NUMBER" --project="$JFROG_CLI_BUILD_PROJECT"
+          echo " "
+        fi
+
+        if [[ "$CI_PIPELINE_SOURCE" == "parent_pipeline" && "$CI_COMMIT_BRANCH" == "main" ]]; then
+          echo "Source branch is $CI_COMMIT_BRANCH. Skipping this job for $CI_PROJECT_NAME"
+        fi
+
+
+.release_bundle_hotfix:
+    rules:
+        - if: '( $CI_PIPELINE_SOURCE == "parent_pipeline" && $CI_COMMIT_BRANCH == "dev" ) || ( $CI_PIPELINE_SOURCE == "parent_pipeline" && $CI_COMMIT_BRANCH == "main" )'
+    script: |
+        if [[ "$CI_PIPELINE_SOURCE" == "parent_pipeline" && "$CI_COMMIT_BRANCH" == "dev" ]]; then
+          echo "Sourcing latest release_info.env file..."
+          source release_info.env
+          echo "Release number is $RELEASE_NUMBER"
+
+          echo " "
+          echo "Clean the escape characters from RELEASE_NUMBER and exporting to CLEAN_RELEASE_NUMBER..."
+          CLEAN_RELEASE_NUMBER=$(echo "$RELEASE_NUMBER" | tr -d '\r\n')
+          echo "Clean release number is $CLEAN_RELEASE_NUMBER"
+
+          echo " "
+          echo "Exporting CLEAN_RELEASE_NUMBER to JFROG_CLI_BUILD_NUMBER..."
+          JFROG_CLI_BUILD_NUMBER="$CLEAN_RELEASE_NUMBER"
+
+          echo " "
+          echo "Printing values of release bundle related variables..."
+          echo "JFROG_CLI_BUILD_NAME=$JFROG_CLI_BUILD_NAME"
+          echo "JFROG_CLI_BUILD_NUMBER=$JFROG_CLI_BUILD_NUMBER"
+          echo "JFROG_CLI_BUILD_PROJECT=$JFROG_CLI_BUILD_PROJECT"
+          echo "SIGNING_KEY=$SIGNING_KEY"
+
+          echo "Creating release bundle using buildinfo values from release-bundle.json..."
+          cat > release-bundle.json <<EOF
+          {
+            "files": [
+              {
+                "aql": {
+                  "items.find": {
+                    "repo": {"\$match": "${JFROG_CLI_BUILD_PROJECT}-*"},
+                    "artifact.module.build.name": "${JFROG_CLI_BUILD_NAME}",
+                    "artifact.module.build.number": "${JFROG_CLI_BUILD_NUMBER}"
+                  }
+                }
+              }
+            ]
+          }
+        EOF
+
+          echo " "
+          echo "Sign release bundle..."
+          jf rbc "$JFROG_CLI_BUILD_NAME" "$JFROG_CLI_BUILD_NUMBER" --spec=release-bundle.json --sync=true --project="$JFROG_CLI_BUILD_PROJECT" --signing-key="$SIGNING_KEY"
+          echo " "
+        fi
+
+        if [[ "$CI_PIPELINE_SOURCE" == "parent_pipeline" && "$CI_COMMIT_BRANCH" == "main" ]]; then
+          # Use git log to find the merge commit message details
+          MERGE_INFO=$(git log -1 --pretty=%B)
+          
+          # Extract the source branch name using regex/grep/sed (requires GNU grep with -P)
+          # This assumes GitLab default merge commit message format: 'Merge branch 'feature/branch-name' into 'main''
+          SOURCE_BRANCH_NAME=$(echo "$MERGE_INFO" | grep -oP "Merge branch '\K[^']+")
+          
+          echo "Successfully extracted source branch name: $SOURCE_BRANCH_NAME"
+
+          if [[ "$SOURCE_BRANCH_NAME" == hotfix* ]]; then
+            echo "Hotfix Merge Request detected ($SOURCE_BRANCH_NAME). Running release bundle creation job..."
+            
+            echo " "
+            echo "Sourcing latest release_info.env file..."
+            source release_info.env
+            echo "Release number is $RELEASE_NUMBER"
+
+            echo " "
+            echo "Clean the escape characters from RELEASE_NUMBER and exporting to CLEAN_RELEASE_NUMBER..."
+            CLEAN_RELEASE_NUMBER=$(echo "$RELEASE_NUMBER" | tr -d '\r\n')
+            echo "Clean release number is $CLEAN_RELEASE_NUMBER"
+
+            echo " "
+            echo "Exporting CLEAN_RELEASE_NUMBER to JFROG_CLI_BUILD_NUMBER..."
+            JFROG_CLI_BUILD_NUMBER="$CLEAN_RELEASE_NUMBER"
+
+            echo " "
+            echo "Printing values of release bundle related variables..."
+            echo "JFROG_CLI_BUILD_NAME=$JFROG_CLI_BUILD_NAME"
+            echo "JFROG_CLI_BUILD_NUMBER=$JFROG_CLI_BUILD_NUMBER"
+            echo "JFROG_CLI_BUILD_PROJECT=$JFROG_CLI_BUILD_PROJECT"
+            echo "SIGNING_KEY=$SIGNING_KEY"
+
+            echo " "
+            echo "Creating release bundle using buildinfo values from release-bundle.json..."
+            cat > release-bundle.json <<EOF
+            {
+              "files": [
+                {
+                  "aql": {
+                    "items.find": {
+                      "repo": {"\$match": "${JFROG_CLI_BUILD_PROJECT}-*"},
+                      "artifact.module.build.name": "${JFROG_CLI_BUILD_NAME}",
+                      "artifact.module.build.number": "${JFROG_CLI_BUILD_NUMBER}"
+                    }
+                  }
+                }
+              ]
+            }
+        EOF
+
+            echo " "
+            echo "Sign release bundle..."
+            jf rbc "$JFROG_CLI_BUILD_NAME" "$JFROG_CLI_BUILD_NUMBER" --spec=release-bundle.json --sync=true --project="$JFROG_CLI_BUILD_PROJECT" --signing-key="$SIGNING_KEY"
+            echo " "
+          else
+            echo "Source branch is $CI_COMMIT_REF_NAME and not hotfix. Skipping this job"
+          fi
+        fi
+
+
+.git_commit:
+    #This rule implies that the job will only run when the code is commited to dev branch
+    rules:
+        - if: '$CI_PIPELINE_SOURCE == "parent_pipeline" && $CI_COMMIT_BRANCH == "dev"'
+    script:
+        - git config --global user.email "gitlab-runner@sbi.co.in"
+        - git config --global user.name "gitlab-runner"
+        - git add .
+        - git diff --cached --quiet || git commit -am "Update pom.xml version and release version [skip ci]"
+        - git push https://ouath2:$GITLAB_TOKEN@gitlab.sbi/$CI_PROJECT_PATH.git HEAD:$CI_COMMIT_BRANCH
+
+
+#This job is used by all internal and external journeys to tag the existing pipeline build 
+.git_release_tag:
+    #This rule implies that the job will only run when the code is commited to dev branch
+    rules:
+        - if: '$CI_PIPELINE_SOURCE == "parent_pipeline" && $CI_COMMIT_BRANCH == "dev"'
+    script: |
+        echo "Sourcing release_info.env file..."
+        source release_info.env
+        echo "Release number is $RELEASE_NUMBER"
+
+        echo " "
+        echo "Configuring git email and username..."
+        git config --global user.email "gitlab-runner@sbi.co.in"
+        git config --global user.name "gitlab-runner"
+
+        echo " "
+        echo "Update the remote URL to authenticate with the gitlab token..."
+        git remote set-url origin "https://ouath2:$GITLAB_TOKEN@gitlab.sbi/$CI_PROJECT_PATH.git"
+
+        echo " "
+        echo "Fetching latest changes from $CI_COMMIT_BRANCH..."
+        git fetch origin $CI_COMMIT_BRANCH
+        git checkout -f $CI_COMMIT_BRANCH
+        git pull origin $CI_COMMIT_BRANCH
+
+        echo " "
+        echo "Tagging release with the release version tag..."
+        TAG_NAME="${RELEASE_NUMBER}"-"${PIPELINE_ID}"
+        git tag -a "$TAG_NAME" -m "Release candidate for ${CI_PROJECT_NAME} with ${TAG_NAME} has been created"
+
+        echo " "
+        echo "Push the tag to Gitlab telling it to skip triggering a new CI pipeline..."
+        git push -o ci.skip origin "$TAG_NAME"
+
+
+.upgrade_helm_testing_delimiter:
+    script: |
+        # Define the exact GitLab log colors
+        GL_GREEN='\033[32;1m'
+        GL_RESET='\033[0m'
+
+        echo -e "${GL_GREEN}Sourcing release_info.env file...${GL_RESET}"
+        source release_info.env
+        echo "Release number is $RELEASE_NUMBER"
+
+        echo " "
+        echo -e "${GL_GREEN}Generate helm values.yaml files for all nonprod envs...${GL_RESET}"
+        chmod 755 /gitrunner_data/builds/$RUNNER_CHECKOUT_DIR/0/centraliseddevsecops/eis_2.0/eis2.0_blueprint1.0/scripts/$HELM_SCRIPT_NAME
+        /gitrunner_data/builds/$RUNNER_CHECKOUT_DIR/0/centraliseddevsecops/eis_2.0/eis2.0_blueprint1.0/scripts/$HELM_SCRIPT_NAME #shell script to generate helm files
+
+        echo " "
+        echo -e "${GL_GREEN}Update the placeholders in values.yaml using sed commands...${GL_RESET}"
+        chmod 755 /gitrunner_data/builds/$RUNNER_CHECKOUT_DIR/0/centraliseddevsecops/eis_2.0/eis2.0_blueprint1.0/scripts/update_yaml.sh
+        /gitrunner_data/builds/$RUNNER_CHECKOUT_DIR/0/centraliseddevsecops/eis_2.0/eis2.0_blueprint1.0/scripts/update_yaml.sh #shell script to update the placeholders in values.yaml
+
+        echo " "
+        echo -e "${GL_GREEN}Export kubeconfig file to login to $ENV cluster...${GL_RESET}"
+        echo "export KUBECONFIG=/gitrunner_data/kubeconfig/$KUBECONFIG_FILE"
+        export KUBECONFIG=/gitrunner_data/kubeconfig/$KUBECONFIG_FILE
+
+        echo " "
+        echo -e "${GL_GREEN}Traversing into CI_PROJECT_DIR directory...${GL_RESET}"
+        echo "cd ${CI_PROJECT_DIR}"
+        cd ${CI_PROJECT_DIR}
+
+        echo " "
+        echo -e "${GL_GREEN}Pull the chart from Harbor and unpack it into a local folder...${GL_RESET}"
+        echo "helm pull oci://${HARBOR_REGISTRY}/eis2.0/mule-journey --version $SBI_MULE_HELM_VERSION --untar --insecure-skip-tls-verify"
+        helm pull oci://${HARBOR_REGISTRY}/eis2.0/mule-journey --version $SBI_MULE_HELM_VERSION --untar --insecure-skip-tls-verify
+
+        echo " "
+        echo -e "${GL_GREEN}Use 'sed' to forcefully overwrite the appVersion in the downloaded Chart.yaml...${GL_RESET}"
+        echo "sed -i "s/^appVersion:.*/appVersion: \"$RELEASE_NUMBER\"/" mule-journey/Chart.yaml"
+        sed -i "s/^appVersion:.*/appVersion: \"$RELEASE_NUMBER\"/" mule-journey/Chart.yaml
+
+        echo " "
+        echo -e "${GL_GREEN}Run the upgrade command pointing to the LOCAL folder (./mule-journey) instead of the OCI URL..${GL_RESET}"
+        echo "helm upgrade --install "$RELEASE_NAME" ./mule-journey --namespace $NAMESPACE --insecure-skip-tls-verify -f $FILE_NAME --server-side=false --force-replace"
+        helm upgrade --install "$RELEASE_NAME" ./mule-journey --namespace $NAMESPACE --insecure-skip-tls-verify -f $FILE_NAME --server-side=false --force-replace
+
+        echo " "
+        echo -e "${GL_GREEN}Cleaning up local mule-journey chart after applying helm configuration...${GL_RESET}"
+        echo "rm -rf ./mule-journey"
+        rm -rf ./mule-journey
+
+        echo " "
+        echo -e "${GL_GREEN}Wait for $DEPLOY_JOB_SLEEP seconds for release to settle down...${GL_RESET}"
+        echo "sleep $DEPLOY_JOB_SLEEP"
+        sleep $DEPLOY_JOB_SLEEP
+
+        echo " "
+        echo -e "${GL_GREEN}View helm revision details after applying helm chart configuration...${GL_RESET}"
+        echo "helm list --filter $RELEASE_NAME -n $NAMESPACE"
+        helm list --filter $RELEASE_NAME -n $NAMESPACE
+
+        echo " "
+        echo -e "${GL_GREEN}View status of pods after applying helm chart configuration...${GL_RESET}"
+        echo "kubectl get pods -n $NAMESPACE | grep $RELEASE_NAME"
+        kubectl get pods -n $NAMESPACE | grep $RELEASE_NAME
+        echo " "
