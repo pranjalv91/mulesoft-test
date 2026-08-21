@@ -1,3 +1,136 @@
+.fortify_scan_updated:
+  image: artifactory.jfrog.sbi:443/dso-base-image/ubi9/ubi9-java17-fortify-24.4:2.0
+  rules:
+    - if: '( $CI_PIPELINE_SOURCE == "parent_pipeline" && $CI_COMMIT_REF_NAME =~ /^feature-/ ) || ( $CI_PIPELINE_SOURCE == "parent_pipeline" && $CI_COMMIT_REF_NAME =~ /^hotfix-/ ) || ( $CI_PIPELINE_SOURCE == "parent_pipeline" && $CI_COMMIT_BRANCH == "dev" )'
+      changes:
+        - "$APP_DIR/**"
+        - "$APP_DIR/**/*"
+  variables:
+    MAVEN_OPTS: "-Xmx4g -Xms2g -XX:+UseG1GC -XX:MaxGCPauseMillis=200"
+    MAVEN_CLI_OPTS: "--batch-mode --errors --fail-at-end --show-version -DskipTests"
+  before_script:
+    - |
+      cd "$APP_DIR"
+      keytool -import -alias jfrog-artifactory -file "$ARTIFACTORY_CERT" \
+        -keystore /home/default/custom-truststore.jks -storepass changeit -noprompt
+      export MAVEN_OPTS="${MAVEN_OPTS} \
+        -Djavax.net.ssl.trustStore=/home/default/custom-truststore.jks \
+        -Djavax.net.ssl.trustStorePassword=changeit"
+  script:
+    - sourceanalyzer -clean -b $APP_NAME
+    - sourceanalyzer -b $APP_NAME mvn $MAVEN_CLI_OPTS clean compile -U -DskipTests=true -Dfortify.sca.exclude=target
+      # Check for the suppression file and scan accordingly
+    - |
+      if [ -f "$CI_PROJECT_DIR/fortify_filter.txt" ]; then
+        echo "Suppression file found. Applying filters..."
+        sourceanalyzer -b $APP_NAME -scan -Xmx8G -filter $CI_PROJECT_DIR/fortify_filter.txt -f ${APP_NAME}.fpr
+      else
+        echo "No fortify_filter.txt found in the repository. Running unfiltered scan..."
+        sourceanalyzer -b $APP_NAME -scan -Xmx8G -f ${APP_NAME}.fpr
+      fi
+    - BIRTReportGenerator -template "Developer Workbook" -source ${APP_NAME}.fpr -format pdf -output ${APP_NAME}_report.pdf
+    # Run separate queries for each severity level
+    - FPRUtility -information -listIssues -search -query "[fortify priority order]:critical" -project ${APP_NAME}.fpr > sca_critical.txt
+    - FPRUtility -information -listIssues -search -query "[fortify priority order]:high" -project ${APP_NAME}.fpr > sca_high.txt
+    - FPRUtility -information -listIssues -search -query "[fortify priority order]:medium" -project ${APP_NAME}.fpr > sca_medium.txt
+    - FPRUtility -information -listIssues -search -query "[fortify priority order]:low" -project ${APP_NAME}.fpr > sca_low.txt
+    # Extract the counts
+    - CRITICAL_ISSUES=$(grep -i "matched search query" sca_critical.txt | awk '{print $1}')
+    - HIGH_ISSUES=$(grep -i "matched search query" sca_high.txt | awk '{print $1}')
+    - MEDIUM_ISSUES=$(grep -i "matched search query" sca_medium.txt | awk '{print $1}')
+    - LOW_ISSUES=$(grep -i "matched search query" sca_low.txt | awk '{print $1}')
+    - |
+      # Ensure variables default to 0 if grep returns empty, preventing mathematical errors
+      CRITICAL_ISSUES=${CRITICAL_ISSUES:-0}
+      HIGH_ISSUES=${HIGH_ISSUES:-0}
+      MEDIUM_ISSUES=${MEDIUM_ISSUES:-0}
+      LOW_ISSUES=${LOW_ISSUES:-0}
+      
+      # Calculate total
+      TOTAL_ISSUES=$((CRITICAL_ISSUES + HIGH_ISSUES + MEDIUM_ISSUES + LOW_ISSUES))
+      
+      if [ "$TOTAL_ISSUES" -gt 0 ]; then
+        echo -e "\e[31m=========================================\e[0m"
+        echo -e "\e[31m QUALITY GATE FAILED\e[0m"
+        echo -e "\e[31m Total Vulnerabilities: $TOTAL_ISSUES\e[0m"
+        echo -e "\e[31m  - Critical: $CRITICAL_ISSUES\e[0m"
+        echo -e "\e[31m  - High:     $HIGH_ISSUES\e[0m"
+        echo -e "\e[31m  - Medium:   $MEDIUM_ISSUES\e[0m"
+        echo -e "\e[31m  - Low:      $LOW_ISSUES\e[0m"
+        echo -e "\e[31m=========================================\e[0m"
+        exit 1
+      else
+        echo -e "\e[32m=========================================\e[0m"
+        echo -e "\e[32m QUALITY GATE PASSED\e[0m"
+        echo -e "\e[32m Total Vulnerabilities: 0\e[0m"
+        echo -e "\e[32m=========================================\e[0m"
+      fi
+  artifacts:
+    paths:
+      - "$APP_DIR/${APP_NAME}_report.pdf"
+      - "$APP_DIR/${APP_NAME}.fpr"
+    expire_in: 1 day
+    when: always
+
+
+.fortifytoGitlab:
+  image: artifactory.jfrog.sbi:443/dso-docker-base-images/py-fortify:0.0.1
+  rules:
+    - if: '( $CI_PIPELINE_SOURCE == "parent_pipeline" && $CI_COMMIT_REF_NAME =~ /^feature-/ ) || ( $CI_PIPELINE_SOURCE == "parent_pipeline" && $CI_COMMIT_REF_NAME =~ /^hotfix-/ ) || ( $CI_PIPELINE_SOURCE == "parent_pipeline" && $CI_COMMIT_BRANCH == "dev" )'
+      changes:
+        - "$APP_DIR/**"
+        - "$APP_DIR/**/*"  
+  before_script:
+    - cd "$APP_DIR"
+    - git config --global http.sslVerify false
+  script:
+    - echo ${CLONE_TOKEN}
+    - git clone https://oauth2:${CLONE_TOKEN}@gitlab.sbi/centraliseddevsecops/common-utility/utility.git
+    - ls -lhrt
+    - python3 utility/script/fortify_to_gitlab.py ${APP_NAME}.fpr
+  artifacts:
+    reports:
+      sast: "$APP_DIR/gl-sast-report.json"
+    paths:
+      - "$APP_DIR/gl-sast-report.json"
+      - "$APP_DIR/${APP_NAME}.fpr"
+
+
+.xray_docker_executor_job:
+    # This rule implies that the job will only run when the pipeline is triggered due to code merge or if the code is committed to dev branch and if the changes are inside the app directory
+    rules:
+        - if: '( $CI_PIPELINE_SOURCE == "parent_pipeline" && $CI_COMMIT_REF_NAME =~ /^feature-/ ) || ( $CI_PIPELINE_SOURCE == "parent_pipeline" && $CI_COMMIT_REF_NAME =~ /^hotfix-/ ) || ( $CI_PIPELINE_SOURCE == "parent_pipeline" && $CI_COMMIT_BRANCH == "dev" )'
+          changes:
+            - "$APP_DIR/**"
+            - "$APP_DIR/**/*"
+    before_script: |
+        echo "Configuring JFrog CLI..."
+        echo "$JFROG_UPLOAD_ACCESS_TOKEN" | jf config add default-server --url="$JFROG_CONFIG_URL" --user="$JFROG_UPLOAD_USER" --access-token-stdin --interactive=false --insecure-tls
+        echo " "
+    script: |
+        echo "Printing values of Xray Scan Variables..."
+        echo "APP_DIR=$APP_DIR"
+        echo "APP_NAME=$APP_NAME"
+        
+        # POSIX-compliant indirect expansion
+        APP_VERSION=$(eval echo "\$$APP_VER")
+        echo "APP_VERSION=$APP_VERSION"
+        
+        echo " "
+        echo "Locating downloaded artifact to where GitLab extracted the artifact from the build job..."
+        BUILD_PATH="${APP_DIR}/target/*.jar"
+        echo "BUILD_PATH=${BUILD_PATH}"
+        
+        echo " "
+        echo "Verifying artifact exists..."
+        ls -lh $BUILD_PATH || { echo "ERROR: Artifact not found at $BUILD_PATH!"; exit 1; }
+        
+        echo " "
+        echo "Running xray scan locally on the runner..."
+        jf scan $BUILD_PATH --watches=EIS2.0 --fail=true
+        echo " "
+
+
 .upgrade_helm_docker_executor:
     variables:
         GIT_SSL_CAINFO: "/tmp/combined-ca-bundle.crt"
