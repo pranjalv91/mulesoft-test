@@ -1,0 +1,105 @@
+.upgrade_helm_docker_executor:
+    variables:
+        GIT_SSL_CAINFO: "/tmp/combined-ca-bundle.crt"
+        SSL_CERT_FILE: "/tmp/combined-ca-bundle.crt"
+        GIT_SSL_NO_VERIFY: "true"
+
+    before_script: |
+        echo -e "${GL_GREEN}Decode gitlab sbi CA into /tmp...${GL_RESET}"
+        echo "echo "$INTERNAL_CA_CERT_B64" | base64 -d > /tmp/internal-ca.crt"
+        echo "$INTERNAL_CA_CERT_B64" | base64 -d > /tmp/internal-ca.crt
+
+        echo " "
+        echo -e "${GL_GREEN}Append your internal CA to UBI's existing system bundle...${GL_RESET}"
+        echo "cat /etc/pki/tls/certs/ca-bundle.crt /tmp/internal-ca.crt > /tmp/combined-ca-bundle.crt"
+        cat /etc/pki/tls/certs/ca-bundle.crt /tmp/internal-ca.crt > /tmp/combined-ca-bundle.crt
+        
+        echo " "
+        echo -e "${GL_GREEN}Configure identity for automated commits...${GL_RESET}"
+        echo "git config --global user.email "gitlab-runner@sbi.co.in""
+        echo "git config --global user.name "gitlab-runner""
+        git config --global user.email "gitlab-runner@sbi.co.in"
+        git config --global user.name "gitlab-runner"
+
+        echo " "
+        echo "Logging into harbor registry $HARBOR_REGISTRY..."
+        echo "Robot user is $HARBOR_REGISTRY_USERNAME"
+        echo "$HARBOR_REGISTRY_PASSWORD" | helm registry login --username 'robot$eis-cicd' "$HARBOR_REGISTRY" --password-stdin --insecure
+    script: |
+        # Define the exact GitLab log colors
+        GL_GREEN='\033[32;1m'
+        GL_RESET='\033[0m'
+
+        echo -e "${GL_GREEN}Sourcing release_info.env file...${GL_RESET}"
+        echo "source release_info.env"
+        source release_info.env
+        echo "Release number is $RELEASE_NUMBER"
+
+        echo " "
+        echo -e "${GL_GREEN}Cloning blueprint repository for scripts...${GL_RESET}"
+        echo "git clone -b ${BLUEPRINT_CHECKOUT_BRANCH} https://ouath2:$GITLAB_TOKEN@gitlab.sbi/centraliseddevsecops/eis_2.0/eis2.0_blueprint1.0.git blueprint_repo"
+        git clone -b ${BLUEPRINT_CHECKOUT_BRANCH} https://ouath2:$GITLAB_TOKEN@gitlab.sbi/centraliseddevsecops/eis_2.0/eis2.0_blueprint1.0.git blueprint_repo
+  
+        echo " "
+        echo -e "${GL_GREEN}Generate helm values.yaml files for all nonprod envs...${GL_RESET}"
+        echo "chmod 755 blueprint_repo/scripts/$HELM_SCRIPT_NAME"
+        chmod 755 blueprint_repo/scripts/$HELM_SCRIPT_NAME
+        ./blueprint_repo/scripts/$HELM_SCRIPT_NAME
+
+        echo " "
+        echo -e "${GL_GREEN}Update the placeholders in values.yaml using sed commands...${GL_RESET}"
+        echo "chmod 755 blueprint_repo/scripts/update_yaml.sh"
+        chmod 755 blueprint_repo/scripts/update_yaml.sh
+        ./blueprint_repo/scripts/update_yaml.sh
+
+        echo " "
+        echo -e "${GL_GREEN}Export kubeconfig file to login to $ENV cluster...${GL_RESET}"
+        echo -e "${GL_GREEN}Decode the Base64 variable into a physical file in the /tmp directory...${GL_RESET}"
+        echo "echo "$KUBECONFIG_CONTENT" | base64 -d > /tmp/kubeconfig.yaml"
+        echo "$KUBECONFIG_CONTENT" | base64 -d > /tmp/kubeconfig.yaml
+
+        echo " "
+        echo -e "${GL_GREEN}Secure the file permissions...${GL_RESET}"
+        echo "chmod 600 /tmp/kubeconfig.yaml"
+        chmod 600 /tmp/kubeconfig.yaml
+
+        echo " "
+        echo -e "${GL_GREEN}Export the path of the physical file...${GL_RESET}"
+        echo "export KUBECONFIG=/tmp/kubeconfig.yaml"
+        export KUBECONFIG=/tmp/kubeconfig.yaml
+
+        echo " "
+        echo -e "${GL_GREEN}Pull the chart from Harbor and unpack it into a local folder...${GL_RESET}"
+        echo "helm pull oci://${HARBOR_REGISTRY}/eis2.0/mule-journey --version $SBI_MULE_HELM_VERSION --untar --insecure-skip-tls-verify"
+        helm pull oci://${HARBOR_REGISTRY}/eis2.0/mule-journey --version $SBI_MULE_HELM_VERSION --untar --insecure-skip-tls-verify
+
+        echo " "
+        echo -e "${GL_GREEN}Use 'sed' to forcefully overwrite the appVersion in the downloaded Chart.yaml...${GL_RESET}"
+        echo "sed -i "s/^appVersion:.*/appVersion: \"$RELEASE_NUMBER\"/" mule-journey/Chart.yaml"
+        sed -i "s/^appVersion:.*/appVersion: \"$RELEASE_NUMBER\"/" mule-journey/Chart.yaml
+
+        echo " "
+        echo -e "${GL_GREEN}Run the upgrade command...${GL_RESET}"
+        echo "helm upgrade --install "$RELEASE_NAME" ./mule-journey --namespace $NAMESPACE --insecure-skip-tls-verify -f $FILE_NAME --server-side=false --force-replace"
+        helm upgrade --install "$RELEASE_NAME" ./mule-journey --namespace $NAMESPACE --insecure-skip-tls-verify -f $FILE_NAME --server-side=false --force-replace
+
+        echo " "
+        echo -e "${GL_GREEN}Cleaning up local mule-journey chart and blueprint repo...${GL_RESET}"
+        echo "rm -rf ./mule-journey blueprint_repo"
+        rm -rf ./mule-journey blueprint_repo
+
+        echo " "
+        echo -e "${GL_GREEN}Wait for $DEPLOY_JOB_SLEEP seconds...${GL_RESET}"
+        echo "sleep $DEPLOY_JOB_SLEEP"
+        sleep $DEPLOY_JOB_SLEEP
+
+        echo " "
+        echo -e "${GL_GREEN}View helm revision details...${GL_RESET}"
+        echo "helm list --filter $RELEASE_NAME -n $NAMESPACE"
+        helm list --filter $RELEASE_NAME -n $NAMESPACE
+
+        echo " "
+        echo -e "${GL_GREEN}View status of pods...${GL_RESET}"
+        echo "kubectl get pods -n $NAMESPACE | grep $RELEASE_NAME"
+        kubectl get pods -n $NAMESPACE | grep $RELEASE_NAME | awk '{print $1, $2, $3, $5}' | column -t -o "    "
+        echo " "
